@@ -25,7 +25,7 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, abc, A)
   complex(kind=8), dimension(N, N) :: A11, A12, A13, A21, A22, A23, A31, A32, A33
 
   ! gfortran -c special_functions.f90 -fPIC
-  ! f2py -c -I. special_functions.o -m Eq_dispersion_v3 Eq_dispersion_v3.f90 
+  ! f2py -c -I. special_functions.o -m fraser_matrix fraser_matrix.f90 
 
 
   c = w/k
@@ -141,12 +141,3 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, abc, A)
 
   
 end subroutine mat
-
-
-
-
-
-
-  
-
-
