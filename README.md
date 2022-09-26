@@ -1,4 +1,4 @@
-# DEWEB-Fraser: Dispersion of Elastic Waves in Elliptical Bars using Fraser's collocation method
+# dielwa-elba: Dispersion of Elastic Waves in Elliptical Bars using Fraser's collocation method
 
 A python module to compute the dispersion of elastic waves in elliptical bars
 using the collocation method according to the following article of Fraser:

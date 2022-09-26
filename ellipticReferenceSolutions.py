@@ -83,9 +83,14 @@ class Fraser:
             plt.ylabel('$\\Omega=\\omega b/c_2$')
 
     
-    def getBranch(self, e,branch='L1', x='K', y='C', labels=True):
-        """
+    def getBranch(self, e, branch='L1', x='K', y='C', labels=True):
+        """Get the dispersion curve for a given value of excentricity
         
+        :param float e: excentricity
+        :param str branch: which branch to get ('L1', 'L2', 'T1', or 'T2')
+        :param str x: xdata ('K', or 'W')
+        :param str y: ydata ('C', or 'W')
+        :param bool labels: if True, also return accompanying labels (x, y, xl, yl)
         """
         ind = self.e.index(e)
         K = self.kb[branch]
@@ -111,9 +116,11 @@ class Fraser:
     
     
     def curveFitting(self, e=0.4, plot=True, fun='poly'):
-        """
+        """Apply curve fitting to dispersion curve
         
-
+        :param float e: excentricity
+        :param bool plot: plot curve fitting
+        :param str fun: function for curve fitting ('poly', 'cos')
         """
         
         if fun=='poly':

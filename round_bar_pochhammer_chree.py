@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Module to handle the dispersion of elastic waves in round bar according to
+Pochhammer-Chree equation for the longitudinal mode of propagation.
+
 Created on Fri Sep  2 15:03:21 2022
 
-@author: dzyani
+@author: dina.zyani
+@author: denis.brizard
 """
 
 import numpy as np
@@ -15,28 +19,12 @@ from scipy.interpolate import interp1d
 
 
 def f_Pochhammer_Chree(k, omega, lambda_, mu, rho, a):
-    """
-    Fonction characteristique de Pochhammer-Chree pour les barres rondes.
-
-    Parameters
-    ----------
-    k : float or complex
-        Nbre d'onde.
-    omega : float
-        Pulsation.
-    lambda_ : float
-        Constante de Lamé.
-    mu : float
-        Constante de Lamé.
-    rho : float
-        Masse volumique.
-    a : float
-        Rayon de la barre ronde.
-
-    Returns
-    -------
-    function.
-
+    """Pochhammer-Chree characteristic function for round bars
+    
+    :param float k: wavenumber
+    :param float omega: circular frequency
+    :param float lamdba_: Lame constant $\lambda$
+    :param float mu: Lame constant $\mu$
     """
     k_2 = k**2
     # alpha
@@ -57,27 +45,17 @@ def f_Pochhammer_Chree(k, omega, lambda_, mu, rho, a):
 
 
 class DetDispEquation:
-    """CLasse permettant de tracer les courbes de dispersion."""
+    """A class to handle the Pochhammer-Chree characteristic equation.
+    
+    """
 
-    def __init__(self, nu=0.3317, E=210e9, rho=7800, a=0.05):
-        """
-        Initialise variables.
-
-        Parameters
-        ----------
-        nu : float, optional
-            Coefficient de Poisson. The default is 0.3317.
-        E : float, optional
-            Module d'Young. The default is 210e9.
-        rho : float, optional
-            Masse volumique. The default is 7800.
-        a : float, optional
-            Rayon de la barre ronde. The default is 0.05.
-
-        Returns
-        -------
-        None.
-
+    def __init__(self, nu=0.3317, E=210e9, rho=7800., a=0.05):
+        """Instantiate bar with given parameters
+        
+        :param float nu: Poisson's ratio [-]
+        :param float E: modulus of elasticity [Pa]
+        :param float rho: density [kg/m3]
+        :param float a: radius of the bar
         """
         la = E * nu / ((1 + nu) * (1 - 2 * nu))  # coef de Lamé
         mu = E / (2 * (1 + nu))  # coef de Lamé
@@ -96,23 +74,13 @@ class DetDispEquation:
         self.dim = {'c':self.c['co'], 'l':a}
         self.dimlab = {'c':'c_0', 'l':'a'}
 
+
     def computeKWmap(self, k, w, adim=True):
-        """
-        Adimensionnaliser K et W, et remplir le determinant.
+        """Compute the value of the characteristic equation on a (k,w) grid
 
-        Parameters
-        ----------
-        k : float
-            Nbre d'ondes.
-        w : float
-            Pulsation.
-        adim : boboolean, optional
-            Adimensionnaliser les variables. The default is True.
-
-        Returns
-        -------
-        None.
-
+        :param array k: wavenumbers
+        :param array w: circular frequency
+        :param bool adim: True if the given input arguments are dimensionless
         """
         if adim:
             K = k
@@ -143,23 +111,13 @@ class DetDispEquation:
         print('#'*35)
         self.kw = {"w": w, "k": k, "det": Z, "K": K, "W": W}
 
+
     def computeWCmap(self, w, c, adim=True):
-        """
-        Adimensionnaliser K et W, et remplir le determinant.
+        """Compute the value of the characteristic equation on a (w,c) grid
 
-        Parameters
-        ----------
-        w : float
-            Pulsation.
-        c : float
-            vitesse d'onde.
-        adim : boboolean, optional
-            Adimensionnaliser les variables. The default is True.
-
-        Returns
-        -------
-        None.
-
+        :param array w: circular frequency
+        :param array c: velocity
+        :param bool adim: True if the given input arguments are dimensionless
         """
         if adim:
             C = c
@@ -193,25 +151,15 @@ class DetDispEquation:
 
 
     def plotDet(self, xy="WC", typep="contour", nature="imag", level=[0],
-                figname=None, colors=None, label='test'):
-        """
-        Tracer les courbes de dispersion.
+                figname=None, colors=None):
+        """Plot value of characteristic function on a grid
 
-        Parameters
-        ----------
-        xy : string, optional
-            Domaine. The default is "WC".
-        typep : string, optional
-            Type du graphique. The default is "contour".
-        nature : string, optional
-            Partie réelle ou imaginaire du determinant. The default is "imag".
-        figname : string, optional
-            Nom de la figure. The default is None.
-
-        Returns
-        -------
-        None.
-
+        :param str xy: name of the grid ('WC', or 'KW')
+        :param str typep: type of plot ('contour', 'sign', or 'log')
+        :param str nature:  ('real', 'imag', or 'abs')
+        :param list level: level(s) for the contour plot
+        :param str figname: name for the figure
+        :param coul color: color for the contour plot
         """
         if xy == "WC":
             x = self.wc["W"]
@@ -239,7 +187,7 @@ class DetDispEquation:
 
             CS = plt.contour(x, y, data, level, 
                              colors=colors, linewidths=1)
-            #CL = plt.clabel(CS, fmt='%g')
+            # CL = plt.clabel(CS, fmt='%g')
 
         elif typep == "sign":
             if nature == "real":
@@ -247,11 +195,11 @@ class DetDispEquation:
             elif nature == "imag":
                 data = np.sign(det.imag)
             else:
-                return    #essaie de tracer qd même
+                return  # essaie de tracer qd même
 
             plt.pcolormesh(x, y, data, shading="auto", cmap="cool")
 
-        elif typep == "log":  ####LOG10
+        elif typep == "log":
             if nature == "real":
                 data = np.log10(det.real)
             elif nature == "imag":
@@ -269,147 +217,147 @@ class DetDispEquation:
         
         if typep=='contour':
             return CS
-    def plotDet_KC(self, xy="KC", typep="contour", nature="imag", level=[0], 
-                       figname=None, adim=True, colors='b', lw=1):
-            """
-            Tracer les courbes de dispersion.
-    
-            Parameters
-            ----------
-            xy : string, optional
-                Domaine. The default is "WC".
-            typep : string, optional
-                Type du graphiqDet.computeKCmap(k, c)ue. The default is "contour".
-            nature : string, optional
-                Partie réelle ou imaginaire du determinant. The default is "imag".
-            figname : string, optional
-                Nom de la figure. The default is None.
-    
-            Returns
-            -------
-            None.
-    
-            """
-            if adim:
-                x = self.kc["K"]
-                y = self.kc["C"]
-                det = self.kc["det"]
-                xlabel = "K = k*b"
-                ylabel = "C=c/c_2[-]"
-            else:
-                x = self.kc['k']
-                y = self.kc['c']
-                det = self.kc["det"]
-                xlabel = "k [1/m]"
-                ylabel = "c [m/s]"
-                
-    
-            plt.figure(figname)
-            if typep == "contour":
-                # level = [0]
-                if nature == "real":
-                    data = det.real
-                elif nature == "imag":
-                    data = det.imag
-                elif nature=='abs':
-                    data = abs(det)
-                elif nature=='quotient_abs':
-                    data = abs(det.real)/abs(det.imag)
-                CS = plt.contour(x, y, data, level, colors=colors, linewidths=lw)
-                # CL = plt.clabel(CS, fmt='%g')
-            elif typep == "sign":
-                if nature == "real":
-                    data = np.sign(det.real)
-                elif nature == "imag":
-                    data = np.sign(det.imag)
-                plt.pcolormesh(x, y, data, shading="auto", cmap="cool", rasterized=True)
-                # plt.colorbar()
-                
-            plt.xlabel(xlabel)
-            plt.ylabel(ylabel)
-            plt.ylim(ymax=2.)
-            plt.title(typep + "(" + nature + "(det))")
-            
-            if typep=='contour':
-                return CS
-# =============================================================================
-#     # Resolution
-# =============================================================================
-    def followBranch0(self, w, itermax=20, extrap='quadratic', jumpC2=None, interp=None):
-            """Follow first branch of longitudinal mode.
-            
-            Numerical solving with *regula falsi* method.
-            
-            :param array w: circular frequencies
-            :param int itermax: maximum number of iterations
-            :param str extrap: kind of extrapolation (see :func:`prediction`)
-            :param float jumpC2: dead zone where no points are computed (suggested value is 0.004)
-            :param str interp: interpolate on ignored dead zone points 
-            """
-            if not w[0]==0.0:
-                print('w[0] should be equal to 0')
-                return
-            
-            ind_skp = []  # indices of skipped points
-            ind_kpt = [0]  # indices of kept points
-            W = [0]
-            K = [0]
-            RES = [0]
-            NIT = [0]
-            KPRED = []
-            k_pred = w[1]/self.c['co'] + 0j  # is this line useful?
-            KPRED.append(k_pred)
-            
-            for ii, ww in enumerate(w[1:]):
-                # Prectiction step
-                k_pred = prediction(W, K, ww, self.c['co'], 'quadratic', verbose=True)
-                correction = True  # suppose we will do the correction step
-                
-                # Check if we enter the dangerous zone (around c/c2=1)
-                if jumpC2 is not None:
-                    c_pred = ww/k_pred
-                    if c_pred<self.c['c_2']*(1+jumpC2) and c_pred>self.c['c_2']*(1-jumpC2):
-                        print('w=%g. Prediction too close to c_2. Skipping point.'%ww)
-                        ind_skp.append(ii+1)
-                        correction = False
-                    else:
-                        ind_kpt.append(ii+1)
-                
-                # Correction step
-                if correction:
-                    func = lambda k: self.detfun(k, ww)
-                    def fun(kk):
-                        return self.detfun(kk, ww)
-                    ksol, nit, res = regulaFalsi(fun, None, k_pred, verbose=True, 
-                                                 itermax=itermax, eps=1e-14)
-                    W.append(ww)
-                    K.append(ksol)
-                    KPRED.append(k_pred)
-                    RES.append(res)
-                    NIT.append(nit)
-                    # predict solution for next w = previous value of k
-                    #k_pred = ksol.real + 0j
-            
-            
-            # Interpolate on dangerous zone points
-            if jumpC2 is not None and interp is not None:
-                print('Interpolation on %i skipped points'%len(ind_skp))
-                interp_fun = interp1d(W, K, kind=interp, assume_sorted=True,
-                                      fill_value='extrapolate')
-                k = np.zeros(len(w))
-                k[ind_kpt] = np.array(K)
-                k[ind_skp] = interp_fun(w[ind_skp])  # interpolate ONLY on skipped points
-                # k = interp_fun(w)
-                w_ = w
-            else:
-                k = np.array(K)
-                w_ = np.array(W)  # may be less points than initially asked   
 
-            c = w_/k
-            c[0] = self.c['co']
-            self.b0 = {'w':w_, 'k':np.array(K), 'c':c, 'k':k,
-                       'res':np.array(RES), 'nit':NIT, 'k_pred':np.array(KPRED),
-                       'ind_skipped':ind_skp, 'ignoredW':len(ind_skp)}
+
+    def plotDet_KC(self, xy="KC", typep="contour", nature="imag", level=[0], 
+                   figname=None, adim=True, colors='b', lw=1):
+        """Tracer les courbes de dispersion.
+        
+        Parameters
+        ----------
+        xy : string, optional
+            Domaine. The default is "WC".
+        typep : string, optional
+            Type du graphiqDet.computeKCmap(k, c)ue. The default is "contour".
+        nature : string, optional
+            Partie réelle ou imaginaire du determinant. The default is "imag".
+        figname : string, optional
+            Nom de la figure. The default is None.
+        
+        Returns
+        -------
+        None.
+        
+        """
+        if adim:
+            x = self.kc["K"]
+            y = self.kc["C"]
+            det = self.kc["det"]
+            xlabel = "K = k*b"
+            ylabel = "C=c/c_2[-]"
+        else:
+            x = self.kc['k']
+            y = self.kc['c']
+            det = self.kc["det"]
+            xlabel = "k [1/m]"
+            ylabel = "c [m/s]"
+            
+        
+        plt.figure(figname)
+        if typep == "contour":
+            # level = [0]
+            if nature == "real":
+                data = det.real
+            elif nature == "imag":
+                data = det.imag
+            elif nature=='abs':
+                data = abs(det)
+            elif nature=='quotient_abs':
+                data = abs(det.real)/abs(det.imag)
+            CS = plt.contour(x, y, data, level, colors=colors, linewidths=lw)
+            # CL = plt.clabel(CS, fmt='%g')
+        elif typep == "sign":
+            if nature == "real":
+                data = np.sign(det.real)
+            elif nature == "imag":
+                data = np.sign(det.imag)
+            plt.pcolormesh(x, y, data, shading="auto", cmap="cool", rasterized=True)
+            # plt.colorbar()
+            
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.ylim(ymax=2.)
+        plt.title(typep + "(" + nature + "(det))")
+        
+        if typep=='contour':
+            return CS
+
+
+    def followBranch0(self, w, itermax=20, extrap='quadratic', jumpC2=None, interp=None):
+        """Follow first branch of longitudinal mode.
+        
+        Numerical solving with *regula falsi* method.
+        
+        :param array w: circular frequencies
+        :param int itermax: maximum number of iterations
+        :param str extrap: kind of extrapolation (see :func:`prediction`)
+        :param float jumpC2: dead zone where no points are computed (suggested value is 0.004)
+        :param str interp: interpolate on ignored dead zone points 
+        """
+        if not w[0]==0.0:
+            print('w[0] should be equal to 0')
+            return
+        
+        ind_skp = []  # indices of skipped points
+        ind_kpt = [0]  # indices of kept points
+        W = [0]
+        K = [0]
+        RES = [0]
+        NIT = [0]
+        KPRED = []
+        k_pred = w[1]/self.c['co'] + 0j  # is this line useful?
+        KPRED.append(k_pred)
+        
+        for ii, ww in enumerate(w[1:]):
+            # Prectiction step
+            k_pred = prediction(W, K, ww, self.c['co'], 'quadratic', verbose=True)
+            correction = True  # suppose we will do the correction step
+            
+            # Check if we enter the dangerous zone (around c/c2=1)
+            if jumpC2 is not None:
+                c_pred = ww/k_pred
+                if c_pred<self.c['c_2']*(1+jumpC2) and c_pred>self.c['c_2']*(1-jumpC2):
+                    print('w=%g. Prediction too close to c_2. Skipping point.'%ww)
+                    ind_skp.append(ii+1)
+                    correction = False
+                else:
+                    ind_kpt.append(ii+1)
+            
+            # Correction step
+            if correction:
+                func = lambda k: self.detfun(k, ww)
+                def fun(kk):
+                    return self.detfun(kk, ww)
+                ksol, nit, res = regulaFalsi(fun, None, k_pred, verbose=True, 
+                                             itermax=itermax, eps=1e-14)
+                W.append(ww)
+                K.append(ksol)
+                KPRED.append(k_pred)
+                RES.append(res)
+                NIT.append(nit)
+                # predict solution for next w = previous value of k
+                #k_pred = ksol.real + 0j
+        
+        
+        # Interpolate on dangerous zone points
+        if jumpC2 is not None and interp is not None:
+            print('Interpolation on %i skipped points'%len(ind_skp))
+            interp_fun = interp1d(W, K, kind=interp, assume_sorted=True,
+                                  fill_value='extrapolate')
+            k = np.zeros(len(w))
+            k[ind_kpt] = np.array(K)
+            k[ind_skp] = interp_fun(w[ind_skp])  # interpolate ONLY on skipped points
+            # k = interp_fun(w)
+            w_ = w
+        else:
+            k = np.array(K)
+            w_ = np.array(W)  # may be less points than initially asked   
+
+        c = w_/k
+        c[0] = self.c['co']
+        self.b0 = {'w':w_, 'k':np.array(K), 'c':c, 'k':k,
+                   'res':np.array(RES), 'nit':NIT, 'k_pred':np.array(KPRED),
+                   'ind_skipped':ind_skp, 'ignoredW':len(ind_skp)}
     
     
     def getBranch0(self, x='w', y='c', label=False):
@@ -453,8 +401,13 @@ class DetDispEquation:
         
         
     def plotBranch0(self, x='w', y='c', ls='.-', figname=None, label=None):
-        """
+        """Plot the first branch computed by :meth:`DetDispEquation.followBranch0`
         
+        :param str x: x variable ('w', 'W', 'k', '-')
+        :param str y: y variable ('c', 'C')
+        :param str ls: linestyle
+        :param str figname: name for the figure 
+        :param str label: label for the curve
         """
         x, xlab, y, ylab = self.getBranch0(x=x, y=y, label=True)
         
@@ -464,9 +417,10 @@ class DetDispEquation:
         plt.ylabel(ylab)
     
     
-    def plotFollow(self):
-        """
+    def plotFollow(self, pred=True):
+        """Plot dispersion curve, residue and number of iterations (Regula Falsi algo)
         
+        :param bool pred: also plot predicted solutions        
         """
         plt.figure()
         ax = plt.subplot(311)
@@ -485,12 +439,13 @@ class DetDispEquation:
         plt.plot(self.b0['w'], self.b0['nit'], '.-')
         plt.xlabel('$\omega$ [rad/s]')
         
-        plt.figure()
-        plt.plot(self.b0['k'], self.b0['w'], '.-', label='sol')
-        plt.plot(self.b0['k_pred'], self.b0['w'], '.-', label='pred')
-        plt.legend()
-        plt.xlabel('k')
-        plt.ylabel('w')
+        if pred:
+            plt.figure()
+            plt.plot(self.b0['k'], self.b0['w'], '.-', label='sol')
+            plt.plot(self.b0['k_pred'], self.b0['w'], '.-', label='pred')
+            plt.legend()
+            plt.xlabel('k')
+            plt.ylabel('w')
 
         
     

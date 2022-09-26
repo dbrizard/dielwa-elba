@@ -26,6 +26,9 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, abc, A)
 
   ! gfortran -c special_functions.f90 -fPIC
   ! f2py -c -I. special_functions.o -m fraser_matrix fraser_matrix.f90 
+  
+  ! gfortran -c special_functions_bessel.f90 -fPIC
+  ! f2py -c -I. special_functions_bessel.o -m fraser_matrix fraser_matrix.f90 
 
 
   c = w/k

@@ -5,10 +5,12 @@ Fraser, W. B. (1969). Dispersion of elastic waves in elliptical bars.
 *Journal of Sound and Vibration*, 10(2), 247‑260. 
 https://doi.org/10.1016/0022-460X(69)90199-0
 
-3ème version avec optimisation des fonctions et résolution numérique avec calcul de l'erreur
+
+
 Created on Fri Sep  2 13:03:37 2022
 
-@author: dzyani
+@author: dina.zyani
+@author: denis.brizard
 """
 
 import numpy as np
@@ -26,8 +28,19 @@ import fraser_matrix
 
 import figutils as fu
 
-def det(k, w, R, N, theta, gamma, c_1, c_2, mode='L'):
-    """det."""
+def char_func_elliptic_fortran(k, w, R, N, theta, gamma, c_1, c_2, mode='L'):
+    """Characteristic function for elliptical bar, with underlying Fortran code
+    
+    :param float k: wavenumber
+    :param float w: circular frequency
+    :param array R: radius of collocation points
+    :param int N: number of collocation points
+    :param array theta: angle of collocation points
+    :param array gamma: angle of normal at collocation points
+    :param float c_1: velocity
+    :param float c_2: velocity
+    :param str mode: wave propagation mode ('L' or 'T')
+    """
     if mode=='L':
         abc = True
         A = fraser_matrix.mat(k, w, R, N, gamma, theta, c_1, c_2, abc)
@@ -43,37 +56,17 @@ def det(k, w, R, N, theta, gamma, c_1, c_2, mode='L'):
 
 
 
-def f_barre_elliptique(k, w, R, N, theta, gamma, c_1, c_2):
-    """
+def char_func_elliptic(k, w, R, N, theta, gamma, c_1, c_2):
+    """Characteristic function for elliptical bar
     
-    Fonction caractéristique pour la barre elliptique.
-
-    Parameters
-    ----------
-    k : array
-        Nbre d'onde.
-    w : array
-        pulsation.
-    c : array
-        vitesse d'onde.
-    R : array
-        Rayon.
-    N : int
-        Nbre de collocation.
-    gamma : array
-        DESCRIPTION.
-    theta : array
-        Angle.
-    c_1 : float
-        DESCRIPTION.
-    c_2 : float
-        DESCRIPTION.
-
-    Returns
-    -------
-    TYPE
-        DESCRIPTION.
-
+    :param float k: wavenumber
+    :param float w: circular frequency
+    :param array R: radius of collocation points
+    :param int N: number of collocation points
+    :param array theta: angle of collocation points
+    :param array gamma: angle of normal at collocation points
+    :param float c_1: velocity
+    :param float c_2: velocity
     """
     c = w/k
     cc2 = (c/c_2)**2
@@ -140,40 +133,38 @@ def f_barre_elliptique(k, w, R, N, theta, gamma, c_1, c_2):
     detA = np.linalg.det(A[1:,1: ])
     return detA
 
+
+
 class DispElliptic(round_bar.DetDispEquation):
     """Classe pour la barre elliptique."""
     
-    def __init__(self, nu=0.3, E=210e9, rho=7800, a=0.05, e=0.4, N=4, fortran=True):
+    def __init__(self, nu=0.3, E=210e9, rho=7800, a=0.05, e=0.4, N=4, 
+                 mode='L', fortran=True):
         """
         Initialise variables.
     
-        Parameters
-        ----------
-        nu : float, optional
-            Coefficient de Poisson. The default is 0.3317.
-        E : float, optional
-            Module d'Young. The default is 210e9.
-        rho : float, optional
-            Masse volumique. The default is 7800.
-        a : float, optional
-            Rayon de la barre ronde. The default is 0.05.
-    
-        Returns
-        -------
-        None.
-    
+        :param float nu: Poisson's ratio [-]
+        :param float E: Young's modulus [Pa]
+        :param float rho: density [kg/m3]
+        :param float a: large radius of ellipse [m]
+        :param float e: excentricity of elliptical cross section [-]
+        :param int N: number of collocation points (on quarter cross-section)
+        :param str mode: type of mode ('L':longitudinal, 'T': torsional)
+        :param bool fortran: Fortran acceleration for characteristic matrix
         """
         mu = E / (2 * (1 + nu))  # coef de Lamé
         la = E * nu / ((1 + nu) * (1 - 2 * nu))  # coef de Lamé
         c_2 = np.sqrt(mu/rho) 
-        b = a*np.sqrt(1-e**2) #Fraser eq(4) 
         # c_1 = np.sqrt((la+2*mu)/rho)
         c_1 = c_2*np.sqrt(2*(1-nu)/(1-2*nu)) #Fraser eq(7)
         self.mat = {'E':E, 'rho':rho, 'nu':nu, 'mu':mu, 'la':la}
+
         self.c = {'c_2':c_2, 'c_1':c_1, 'co': np.sqrt(E/rho)}
+        b = a*np.sqrt(1-e**2) #Fraser eq(4) 
         self.a = a #b
         self.geo = {'e': e, 'b': b, 'N': N,'a':a}
         
+        # Collocation points coordinates
         m = np.arange(1, N+1)
         theta = (m-1)*np.pi/2/N
         e2 = e**2
@@ -181,68 +172,51 @@ class DispElliptic(round_bar.DetDispEquation):
         gamma = -np.arctan((e2*np.sin(2*theta))/(2*(1-e2*cos__2))) #Frser eq(6)
         R = b*np.sqrt(1/(1 - e2*cos__2)) #Frser eq(5)
         self.ellipse = {'R':R, 'gamma':gamma, 'theta':theta}
+        
+        # Characteristic function
+        if mode=='T' and fortran is False:
+            fortran = True
+            print('Forcing Fortran=True because equations for T mode are not written in Python')
         if fortran:
             def detfun(k, w):
-                return det(k, w, R, N, theta, gamma, c_1, c_2, mode='T')
+                """Characteristic determinant function."""
+                return char_func_elliptic_fortran(k, w, R, N, theta, gamma, 
+                                                  c_1, c_2, mode=mode)
         else:
             def detfun(k, w):
                 """Characteristic determinant function."""
-                return f_barre_elliptique(k, w, R, N, theta, gamma, c_1, c_2)
+                return char_func_elliptic(k, w, R, N, theta, gamma, c_1, c_2)
         self.detfun = detfun
         self.vectorized = False  # detfun is not vectorized
         self.dim = {'c':c_2, 'l':b}  # for dimensionless variables
-        self.dimlab = {'c':'c_2', 'l':'b'}
-    
-   
+        self.dimlab = {'c':'c_2', 'l':'b'}  # name of dimensionless variables for use un labels
+
     
     def plot_ellipse(self):
-        """
-        Tracer l'ellipse.
-
-        Parameters
-        ----------
-        R : array
-            vecteur des valeurs de R.
-        theta : array
-            vecteur des valeurs de theta.
-
-        Returns
-        -------
-        None.
+        """Plot elliptical cross section
 
         """
         plt.figure('ellipse')
-        plt.polar(self.ellipse["theta"], self.ellipse["R"], '.-', label = "ellipse")
+        plt.polar(self.ellipse['theta'], self.ellipse['R'], '.-', label='ellipse')
 
         
-        x = self.ellipse["R"]*np.cos(self.ellipse["theta"])
-        y = self.ellipse["R"]*np.sin(self.ellipse["theta"])
+        x = self.ellipse['R']*np.cos(self.ellipse['theta'])
+        y = self.ellipse['R']*np.sin(self.ellipse['theta'])
         # r = np.sqrt(x**2+y**2)
-        for ii in range (self.geo["N"]):
+        for ii in range(self.geo['N']):
             plt.quiver(0, 0, x[ii], y[ii], scale=0.09, color='g')
-        x_g = self.ellipse["R"]*np.cos(self.ellipse["theta"]+self.ellipse["gamma"])
-        y_g = self.ellipse["R"]*np.sin(self.ellipse["theta"]+self.ellipse["gamma"])
-        for ii in range (self.geo["N"]):
+        x_g = self.ellipse['R']*np.cos(self.ellipse['theta']+self.ellipse['gamma'])
+        y_g = self.ellipse['R']*np.sin(self.ellipse['theta']+self.ellipse['gamma'])
+        for ii in range(self.geo['N']):
             plt.quiver(0, 0, x_g[ii], y_g[ii], scale=0.09, color='r')
      
         
     def computeKCmap(self, k, c, adim=True):
-        """
-        Adimensionnaliser K et W, et remplir le determinant.
-   
-        Parameters
-        ----------
-        k : float
-            Nbre d'ondes.
-        w : float
-            Pulsation.
-        adim : boboolean, optional
-            Adimensionnaliser les variables. The default is True.
-   
-        Returns
-        -------
-        None.
-   
+        """Compute the value of the characteristic equation on a (k,c) grid
+
+        :param array k: wavenumbers
+        :param array c: velocity
+        :param bool adim: True if the given input arguments are dimensionless
         """
         if adim:
             K = k
@@ -546,7 +520,7 @@ if __name__ == "__main__":
         #omega = np.delete(omega, np.array([68, 69]))  # try to "jump" over difficulty!
         # omega = np.linspace(0, 5e6, 500)
         E = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-        Nmax = [7, 7, 7, 7, 7, 7, 7, 7, 7, 6]
+        Nmax = [7, 7, 7, 7, 7, 7, 7, 7, 7, 7]
         # E = [0.9]
         # Nmax = [6]
         Nmin = 3
