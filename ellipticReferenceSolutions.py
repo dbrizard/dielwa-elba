@@ -53,17 +53,17 @@ class Fraser:
         self.e = {'L':e_LT, 'T':e_LT, 'B':e_B}
 
         # c/c2, longitudinal mode, 1st and 2nd branch
-        L1 = np.genfromtxt('fraserTable2.txt', delimiter=',')  
-        L2 = np.genfromtxt('fraserTable3.txt', delimiter=',')
+        L1 = np.genfromtxt('FraserTables/fraserTable2.txt', delimiter=',')  
+        L2 = np.genfromtxt('FraserTables/fraserTable3.txt', delimiter=',')
         # c/c2, torsional mode, 1st and 2nd branch
-        T1 = np.genfromtxt('fraserTable4.txt', delimiter=',')
-        T2 = np.genfromtxt('fraserTable5.txt', delimiter=',')
+        T1 = np.genfromtxt('FraserTables/fraserTable4.txt', delimiter=',')
+        T2 = np.genfromtxt('FraserTables/fraserTable5.txt', delimiter=',')
         # c/c2, x Bending mode, 1st and 2nd branch
-        Bx1 = np.genfromtxt('fraserTableBx1.txt', delimiter=',')
-        Bx2 = np.genfromtxt('fraserTableBx2.txt', delimiter=',')
+        Bx1 = np.genfromtxt('FraserTables/fraserTableBx1.txt', delimiter=',')
+        Bx2 = np.genfromtxt('FraserTables/fraserTableBx2.txt', delimiter=',')
         # c/c2, y Bending mode, 1st and 2nd branch
-        By1 = np.genfromtxt('fraserTableBy1.txt', delimiter=',')
-        By2 = np.genfromtxt('fraserTableBy2.txt', delimiter=',')
+        By1 = np.genfromtxt('FraserTables/fraserTableBy1.txt', delimiter=',')
+        By2 = np.genfromtxt('FraserTables/fraserTableBy2.txt', delimiter=',')
  
         self.branches = {'L1':L1, 'L2':L2, 'T1':T1, 'T2':T2,
                          'Bx1':Bx1, 'Bx2':Bx2, 'By1':By1, 'By2':By2}
