@@ -317,7 +317,7 @@ if __name__ == "__main__":
     if True:
         e = 0.4
         N = 4
-        Det = DispElliptic(e=e, N=N)
+        Det = DispElliptic(e=e, N=N, mode='T')
         omega = np.linspace(0, 8e5, 500)  # Ok pour k<1.208
         # omega = np.linspace(0, 1e6, 4000)  # trying very small step. Ok pour k<1.2182
         Det.followBranch0(omega, itermax=20)
