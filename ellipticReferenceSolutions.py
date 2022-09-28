@@ -8,6 +8,22 @@ Fraser, W. B. (1969). Dispersion of elastic waves in elliptical bars.
 *Journal of Sound and Vibration*, 10(2), 247‑260. 
 https://doi.org/10.1016/0022-460X(69)90199-0
 
+:class:`Fraser` contains the tables given by Fraser in the above-mentioned 
+article. The first two branches of the following modes are provided for various
+values of excentricity $e$:
+    
+    * longitudinal mode ('L')
+    * torsional mode ('T')
+    * bending modes ('Bx' and 'By')
+
+
+:meth:`Fraser.curveFitting` tries do fit the dispersion curves with a given 
+function, which was first given by Felice for the dispersion of elastic waves 
+in round bars. However, the fit is rather poor in the case of elliptical bars.
+
+Felice, C. W. (1986). The response of soil to impulse loads using the 
+split-Hopkinson pressure bar technique (Nᵒ ADA169133; p. 319). DTIC Document. 
+https://apps.dtic.mil/sti/citations/ADA169133
 
 
 Created on Thu Jul  7 08:19:50 2022
@@ -75,7 +91,7 @@ class Fraser:
         
         :param str y: choose y axis ('C' or 'W')
         :param list e: ellipticity values to plot (all the available values if empty)
-        :param str branch: branch id
+        :param str branch: branch id ('L1', 'L1', 'T1', 'T2', 'Bx1', 'By2', etc.)
         :param str ls: linestyle
         :param str figname: name for the figure
         """
@@ -106,7 +122,7 @@ class Fraser:
         """Get the dispersion curve for a given value of excentricity
         
         :param float e: excentricity
-        :param str branch: which branch to get ('L1', 'L2', 'T1', or 'T2')
+        :param str branch: which branch to get ('L1', 'T2', 'Bx1', 'By2', etc.)
         :param str x: xdata ('K', or 'W')
         :param str y: ydata ('C', or 'W')
         :param bool labels: if True, also return accompanying labels (x, y, xl, yl)
