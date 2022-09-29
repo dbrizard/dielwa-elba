@@ -41,17 +41,16 @@ def char_func_elliptic_fortran(k, w, R, N, theta, gamma, c_1, c_2, mode='L'):
     :param float c_2: velocity
     :param str mode: wave propagation mode ('L' or 'T')
     """
+    A = fraser_matrix.mat(k, w, R, N, gamma, theta, c_1, c_2, mode)
     if mode=='L':
-        abc = True
-        A = fraser_matrix.mat(k, w, R, N, gamma, theta, c_1, c_2, abc)
         detA = np.linalg.det(A[1:, 1:])
     elif mode=='T':
-        abc = False
-        A = fraser_matrix.mat(k, w, R, N, gamma, theta, c_1, c_2, abc)
         ind = list(range(3*N))
         ind.remove(N)   # XXX reason why indices N and 2*N ?
         ind.remove(2*N) # ditto
         detA = np.linalg.det(A[np.ix_(ind,ind)])
+    elif mode in ('Bx', 'By'):
+        detA = np.linalg.det(A)
     return detA
 
 
@@ -166,7 +165,10 @@ class DispElliptic(round_bar.DetDispEquation):
         
         # Collocation points coordinates
         m = np.arange(1, N+1)
-        theta = (m-1)*np.pi/2/N
+        if mode in ('L', 'T'):
+            theta = (m-1)*np.pi/2/N
+        elif mode in ('Bx', 'By'):
+            theta = (m-0.5)*np.pi/2/N
         e2 = e**2
         cos__2 = np.cos(theta)**2
         gamma = -np.arctan((e2*np.sin(2*theta))/(2*(1-e2*cos__2))) #Frser eq(6)
@@ -317,7 +319,8 @@ if __name__ == "__main__":
     if True:
         e = 0.4
         N = 4
-        Det = DispElliptic(e=e, N=N, mode='L')
+        mode = 'By'
+        Det = DispElliptic(e=e, N=N, mode=mode)
         omega = np.linspace(0, 8e5, 500)  # Ok pour k<1.208
         # omega = np.linspace(0, 1e6, 4000)  # trying very small step. Ok pour k<1.2182
         Det.followBranch0(omega, itermax=20)
@@ -332,8 +335,12 @@ if __name__ == "__main__":
         FR.plot(e=[e], figname='sign_imag')
         
         Det.computeKCmap(k=np.linspace(0, 5, 100), c=np.linspace(0.6, 2.2, 100), adim=True)
-        Det.plotDet_KC('KC', typep='sign', nature='real')
-        Det.plotDet_KC('KC', typep='sign', nature='imag')
+        if mode in ('L', 'Bx', 'By'):
+            Det.plotDet_KC('KC', typep='sign', nature='real', figname='verif')
+        elif mode=='T':
+            Det.plotDet_KC('KC', typep='sign', nature='imag', figname='verif')
+        FR.plot(e=[e], figname='verif', branch=mode+'1', x='K', y='C')
+        FR.plot(e=[e], figname='verif', branch=mode+'2', x='K', y='C')
         
     
     #%% Comparaison Fortran/Python + validation Fraser
