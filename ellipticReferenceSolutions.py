@@ -86,9 +86,12 @@ class Fraser:
         self.fit = {}
 
 
-    def plot(self, y='C', e=[], branch='L1', ls='.-', figname=None):
+    def plot(self, x='K', y='C', e=[], branch='L1', ls='.-', figname=None):
         """Plot c/c_2 or Omega wrt kb for a given branch, longitudinal mode only.
         
+        See also :meth:`Fraser.getBranch`
+        
+        :param str x: choose x axis ('K' or 'W')
         :param str y: choose y axis ('C' or 'W')
         :param list e: ellipticity values to plot (all the available values if empty)
         :param str branch: branch id ('L1', 'L1', 'T1', 'T2', 'Bx1', 'By2', etc.)
@@ -102,20 +105,12 @@ class Fraser:
         plt.figure(figname)
         
         for ee in e:
-            ind = self.e[mode].index(ee)
-            K = self.kb[branch]
-            if y=='C':
-                ydata = self.branches[branch][:,ind]
-            elif y=='W':
-                ydata = self.branches[branch][:,ind] * K  # XXX probablement à une constante près...
-            plt.plot(K, ydata, ls, label="%g (%s)"%(ee,branch))
+            xdata, ydata, xlabel, ylabel = self.getBranch(ee, branch=branch, x=x, y=y, labels=True)
+            plt.plot(xdata, ydata, ls, label="%g (%s)"%(ee,branch))
         
         plt.legend(title='e (b):')
-        plt.xlabel('kb')
-        if y=='C':
-            plt.ylabel('$c/c_2$')
-        elif y=='W':
-            plt.ylabel('$\\Omega=\\omega b/c_2$')
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
 
     
     def getBranch(self, e, branch='L1', x='K', y='C', labels=True):
@@ -123,8 +118,8 @@ class Fraser:
         
         :param float e: excentricity
         :param str branch: which branch to get ('L1', 'T2', 'Bx1', 'By2', etc.)
-        :param str x: xdata ('K', or 'W')
-        :param str y: ydata ('C', or 'W')
+        :param str x: xdata ('K' or 'W')
+        :param str y: ydata ('C' or 'W')
         :param bool labels: if True, also return accompanying labels (x, y, xl, yl)
         """
         mode = branch[0]
@@ -136,14 +131,14 @@ class Fraser:
             xlabel = '$K=kb$'
         elif x=='W':
             xdata = self.branches[branch][:,ind] * K
-            xlabel = '$W=?$'
+            xlabel = '$\\Omega=\\omega b/c_2$'
         
         if y=='C':
             ydata = self.branches[branch][:,ind]
             ylabel = '$C=c/c_2$'
         elif y=='W':
             ydata = self.branches[branch][:,ind] * K  # XXX probablement à une constante près...
-            ylabel = '$W=?$'
+            ylabel = '$\\Omega=\\omega b/c_2$'
     
         if labels:
             return xdata, ydata, xlabel, ylabel
@@ -196,37 +191,36 @@ class Fraser:
 
 if __name__=='__main__':
     plt.close('all')
+    x = 'W'
+    y = 'C'
     
     # %% Test Fraser class
     FR = Fraser()
-    FR.plot(figname='L1')
-    FR.plot(branch='L2',figname='L2')
+    FR.plot(x=x, y=y, figname='L1')
+    FR.plot(x=x, y=y, branch='L2',figname='L2')
     
     # Plot a specific value of e
-    FR.plot(e=[0.4], figname='0.4')
-    FR.plot(e=[0.4], figname='0.4', branch='L2', ls='+-')
+    FR.plot(x=x, y=y, e=[0.4], figname='0.4')
+    FR.plot(x=x, y=y, e=[0.4], figname='0.4', branch='L2', ls='+-')
 
     # Longitudinal mode
-    FR.plot(figname='longi')
-    FR.plot(figname='longi', branch='L2', ls='+-')
-    
-    FR.plot(y='W', figname='KW')
-    FR.plot(y='W', figname='KW', branch='L2')
-    
+    FR.plot(x=x, y=y, figname='longi')
+    FR.plot(x=x, y=y, figname='longi', branch='L2', ls='+-')
+        
     # Torsional mode
-    FR.plot(figname='torsional', branch='T1')
-    FR.plot(figname='torsional', branch='T2', ls='+-')
+    FR.plot(x=x, y=y, figname='torsional', branch='T1')
+    FR.plot(x=x, y=y, figname='torsional', branch='T2', ls='+-')
     
     # Bending mode
-    FR.plot(branch='Bx1', figname='Bx')
-    FR.plot(branch='Bx2', figname='Bx')
-    FR.plot(branch='By1', figname='By')
-    FR.plot(branch='By2', figname='By')
+    FR.plot(x=x, y=y, branch='Bx1', figname='Bx')
+    FR.plot(x=x, y=y, branch='Bx2', figname='Bx')
+    FR.plot(x=x, y=y, branch='By1', figname='By')
+    FR.plot(x=x, y=y, branch='By2', figname='By')
     # all bending modes on the same figure
-    FR.plot(branch='Bx1', figname='bending')
-    FR.plot(branch='By1', ls='+-', figname='bending')
-    FR.plot(branch='Bx2', figname='bending')
-    FR.plot(branch='By2', ls='+-', figname='bending')    
+    FR.plot(x=x, y=y, branch='Bx1', figname='bending')
+    FR.plot(x=x, y=y, branch='By1', ls='+-', figname='bending')
+    FR.plot(x=x, y=y, branch='Bx2', figname='bending')
+    FR.plot(x=x, y=y, branch='By2', ls='+-', figname='bending')    
     
     # %% TRY CURVE FITTING
     # FR.curveFitting(e=0.4, plot=True, figname='CF0.4')  # error, missing values
