@@ -214,106 +214,74 @@ class DispElliptic(round_bar.DetDispEquation):
             plt.quiver(0, 0, x_g[ii], y_g[ii], scale=0.09, color='r')
      
         
-    def computeKCmap(self, k, c, adim=True):
-        """Compute the value of the characteristic equation on a (k,c) grid
 
-        :param array k: wavenumbers
-        :param array c: velocity
-        :param bool adim: True if the given input arguments are dimensionless
-        """
-        if adim:
-            K = k
-            C = c
-            c = c * self.c["c_2"]
-            k = k / self.geo["b"]
-        else: 
-            K = k * self.geo["b"]
-            C = c /self.c["c_2"]
-        Z = np.empty((len(c), len(k)), dtype=np.complex128)
-        start = time.clock()
-
-        for ii, cc in enumerate(c):
-            print('%i/%i'%(ii,len(c)))
-            for jj, kk in enumerate(k):
-                om = kk*cc
-                Z[ii, jj] = self.detfun(kk, om)
-                
-        end = time.clock()
-        temps = end - start
-        npts = len(k)*len(c)
-        print('#'*35)
-        print('Took %g s to compute %i points'%(temps, npts))
-        print('%g ms/1pt'%(temps/npts*1e3))
-        print('#'*35)
-
-        self.kc = {"c": c, "k": k, "det": Z, "K": K, "C": C}
 
         
         
-    def plotDet_KC(self, xy="KC", typep="contour", nature="imag", level=[0], 
-                   figname=None, adim=True, colors='b', lw=1):
-        """
-        Tracer les courbes de dispersion.
+    # def plotDet_KC(self, xy="KC", typep="contour", nature="imag", level=[0], 
+    #                figname=None, adim=True, colors='b', lw=1):
+    #     """
+    #     Tracer les courbes de dispersion.
 
-        Parameters
-        ----------
-        xy : string, optional
-            Domaine. The default is "WC".
-        typep : string, optional
-            Type du graphiqDet.computeKCmap(k, c)ue. The default is "contour".
-        nature : string, optional
-            Partie réelle ou imaginaire du determinant. The default is "imag".
-        figname : string, optional
-            Nom de la figure. The default is None.
+    #     Parameters
+    #     ----------
+    #     xy : string, optional
+    #         Domaine. The default is "WC".
+    #     typep : string, optional
+    #         Type du graphiqDet.computeKCmap(k, c)ue. The default is "contour".
+    #     nature : string, optional
+    #         Partie réelle ou imaginaire du determinant. The default is "imag".
+    #     figname : string, optional
+    #         Nom de la figure. The default is None.
 
-        Returns
-        -------
-        None.
+    #     Returns
+    #     -------
+    #     None.
 
-        """
-        if adim:
-            x = self.kc["K"]
-            y = self.kc["C"]
-            det = self.kc["det"]
-            xlabel = "K = k*b"
-            ylabel = "C=c/c_2[-]"
-        else:
-            x = self.kc['k']
-            y = self.kc['c']
-            det = self.kc["det"]
-            xlabel = "k [1/m]"
-            ylabel = "c [m/s]"
+    #     """
+    #     if adim:
+    #         x = self.kc["K"]
+    #         y = self.kc["C"]
+    #         det = self.kc["det"]
+    #         xlabel = "K = k*b"
+    #         ylabel = "C=c/c_2[-]"
+    #     else:
+    #         x = self.kc['k']
+    #         y = self.kc['c']
+    #         det = self.kc["det"]
+    #         xlabel = "k [1/m]"
+    #         ylabel = "c [m/s]"
             
 
-        plt.figure(figname)
-        if typep == "contour":
-            # level = [0]
-            if nature == "real":
-                data = det.real
-            elif nature == "imag":
-                data = det.imag
-            elif nature=='abs':
-                data = abs(det)
-            elif nature=='quotient_abs':
-                data = abs(det.real)/abs(det.imag)
-            CS = plt.contour(x, y, data, level, colors=colors, linewidths=lw)
-            # CL = plt.clabel(CS, fmt='%g')
-        elif typep == "sign":
-            if nature == "real":
-                data = np.sign(det.real)
-            elif nature == "imag":
-                data = np.sign(det.imag)
-            plt.pcolormesh(x, y, data, shading="auto", cmap="cool", rasterized=True)
-            # plt.colorbar()
+    #     plt.figure(figname)
+    #     if typep == "contour":
+    #         # level = [0]
+    #         if nature == "real":
+    #             data = det.real
+    #         elif nature == "imag":
+    #             data = det.imag
+    #         elif nature=='abs':
+    #             data = abs(det)
+    #         elif nature=='quotient_abs':
+    #             data = abs(det.real)/abs(det.imag)
+    #         CS = plt.contour(x, y, data, level, colors=colors, linewidths=lw)
+    #         # CL = plt.clabel(CS, fmt='%g')
+    #     elif typep == "sign":
+    #         if nature == "real":
+    #             data = np.sign(det.real)
+    #         elif nature == "imag":
+    #             data = np.sign(det.imag)
+    #         plt.pcolormesh(x, y, data, shading="auto", cmap="cool", rasterized=True)
+    #         # plt.colorbar()
             
-        plt.xlabel(xlabel)
-        plt.ylabel(ylabel)
-        plt.ylim(ymax=2.)
-        #plt.title(typep + "(" + nature + "(det))")
-        plt.title("%s(%s(det)), N=%i, e=%g"%(typep, nature, self.geo['N'], self.geo['e']))
+    #     plt.xlabel(xlabel)
+    #     plt.ylabel(ylabel)
+    #     plt.ylim(ymax=2.)
+    #     #plt.title(typep + "(" + nature + "(det))")
+    #     plt.title("%s(%s(det)), N=%i, e=%g"%(typep, nature, self.geo['N'], self.geo['e']))
         
-        if typep=='contour':
-            return CS
+    #     if typep=='contour':
+    #         return CS
         
 if __name__ == "__main__":
     plt.close("all")
@@ -418,6 +386,7 @@ if __name__ == "__main__":
     if True:
         e = 0.9
         N = [3, 4, 5, 6, 8, 9, 10, 11, 12]
+        N = [3, 4, 5]
         DET = []
         # COMPUTE
         for nn in N:
@@ -431,9 +400,9 @@ if __name__ == "__main__":
         # PLOT
         for ddet in DET:
             if ddet.geo['N']%2==0:
-                ddet.plotDet_KC(typep="sign", nature='real', figname="sign_real%i"%ddet.geo['N'])
+                ddet.plotDet(xy='KC', typep="sign", nature='real', figname="sign_real%i"%ddet.geo['N'])
             else:
-                ddet.plotDet_KC(typep="sign", figname="sign_imag%i"%ddet.geo['N'])
+                ddet.plotDet(xy='KC', typep="sign", figname="sign_imag%i"%ddet.geo['N'])
         
     #%% KC
 
