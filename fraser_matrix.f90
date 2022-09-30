@@ -12,7 +12,7 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
    ! INTERNAL VARIABLES
    ! Scalars
    real(kind=8) :: sign
-   integer(kind=4) :: i, j, nn, ee1, ee2, ee3, ee4, ee5, nm0, jj, s0, s1, s2
+   integer(kind=4) :: i, j, nn, enp2, enp1, enp0, enm2, enm1, nm0, jj, s0, s1, s2
    complex(kind=8) :: KK, alpha, beta, cc2, cc1, c
    ! 1D arrays
    real(kind=8), dimension(N) :: cos_p2, cos_p1, cos_, cos_m1, cos_m2, sin_p2, sin_m2
@@ -36,25 +36,25 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
 
    select case (mode)
    case ('L', 'T')
-      pp = [ (jj, jj=0,2*N,2) ]  ! array of even values
+      pp = [ (jj, jj=0,2*N-2,2) ]  ! array of even values
       ! end indices
-      ee1 = 2*N+2
-      ee2 = 2*N+1
-      ee3 = 2*N
-      ee5 = 2*N-1
-      ee4 = 2*N-2
+      enp2 = 2*N
+      enp1 = 2*N-1
+      enp0 = 2*N-2
+      enm1 = 2*N-3
+      enm2 = 2*N-4
       ! start indices
       s0 = 2
       s1 = 1
       s2 = 0
    case ('Bx', 'By') 
-      pp = [ (jj, jj=1,2*N+1,2) ]  ! array of odd values
+      pp = [ (jj, jj=1,2*N-1,2) ]  ! array of odd values
       ! end indices
-      ee1 = 2*N+1
-      ee2 = 2*N
-      ee3 = 2*N-1
-      ee5 = 2*N-2
-      ee4 = 2*N-3
+      enp2 = 2*N+1
+      enp1 = 2*N
+      enp0 = 2*N-1
+      enm1 = 2*N-2
+      enm2 = 2*N-3
       ! start indices
       s0 = 3
       s1 = 2
@@ -65,30 +65,30 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
 
    ! COMPUTE ALL THE NECESSARY BESSEL FUNCTIONS
    bessel: do i = 1, N
-      call cjyna(ee1, bR(i), nm0, cbj, cdj0, cby0, cdy0)
-      jb_np2(i,:) = cbj(s0:ee1:2)   ! J_{n+2}(bR)
-      jb_np1(i,:) = cbj(s1:ee2:2) ! J_{n+1}(bR)
-      jb_np0(i,:) = cbj(s2:ee3:2) ! J_{n}(bR)
-      jb_nm1(i,1) = ((-1)**1)* cbj(1) ! See DLMF eq. 10.4.1
-      jb_nm1(i,2:N) = cbj(s1:ee5:2)  ! J_{n-1}(bR)
-      jb_nm2(i,1)  = ((-1)**2)* cbj(2) ! See DLMF eq. 10.4.1
-      jb_nm2(i,2:N) = cbj(s2:ee4:2)  ! J_{n-2}(bR)
+      call cjyna(enp2, bR(i), nm0, cbj, cdj0, cby0, cdy0)
+      jb_np2(i,:) = cbj(s0:enp2:2)   ! J_{n+2}(bR)
+      jb_np1(i,:) = cbj(s1:enp1:2) ! J_{n+1}(bR)
+      jb_np0(i,:) = cbj(s2:enp0:2) ! J_{n}(bR)
+      jb_nm1(i,1) = ((-1)**1)* cbj(1) ! J_{-1}
+      jb_nm1(i,2:N) = cbj(s1:enm1:2)  ! J_{n-1}(bR)
+      jb_nm2(i,1)  = ((-1)**2)* cbj(2) ! J_{-2}
+      jb_nm2(i,2:N) = cbj(s2:enm2:2)  ! J_{n-2}(bR)
       
-      call cjyna(ee1, aR(i), nm0, cbj1, cdj0, cby0, cdy0)
-      ja_np2(i,:)  = cbj1(s0:ee1:2)    ! J_{n+2}(aR)
-      ja_np1(i,:) = cbj1(s1:ee2:2)  ! J_{n+1}(aR)
-      ja_np0(i,:) = cbj1(s2:ee3:2)  ! J_{n}(aR)
-      ja_nm2(i, 2:N) = cbj1(s2:ee4:2)  ! J_{n-2}(aR) 
+      call cjyna(enp2, aR(i), nm0, cbj1, cdj0, cby0, cdy0)
+      ja_np2(i,:)  = cbj1(s0:enp2:2)    ! J_{n+2}(aR)
+      ja_np1(i,:) = cbj1(s1:enp1:2)  ! J_{n+1}(aR)
+      ja_np0(i,:) = cbj1(s2:enp0:2)  ! J_{n}(aR)
+      ja_nm2(i, 2:N) = cbj1(s2:enm2:2)  ! J_{n-2}(aR) 
       ja_nm2(i,1) =  ((-1)**2)* cbj1(2) ! See DLMF eq. 10.4.1
       ja_nm1(i,1) = ((-1)**1)* cbj1(1) ! See DLMF eq. 10.4.1
-      ja_nm1(i,2:N) = cbj1(1:ee5:2) ! J_{n-1}(aR)
+      ja_nm1(i,2:N) = cbj1(1:enm1:2) ! J_{n-1}(aR)
       
       select case (mode)
       case ('Bx', 'By')
          jb_nm2(i,1) = ((-1)**1)* cbj(1) ! See DLMF eq. 10.4.1
-         jb_nm1(i,:) = cbj(0:ee5:2)  ! J_{n-1}(bR)
+         jb_nm1(i,:) = cbj(0:enm1:2)  ! J_{n-1}(bR)
          ja_nm2(i,1) =  ((-1)**1)* cbj1(1) ! See DLMF eq. 10.4.1
-         ja_nm1(i,:) = cbj1(0:ee5:2) ! J_{n-1}(aR)
+         ja_nm1(i,:) = cbj1(0:enm1:2) ! J_{n-1}(aR)
       case default
          !print*, "Invalid mode: ", mode
       end select
