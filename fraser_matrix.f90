@@ -18,7 +18,7 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
    real(kind=8), dimension(N) :: cos_p2, cos_p1, cos_, cos_m1, cos_m2, sin_p2, sin_m2
    complex(kind=8), dimension(N) :: bR, aR, jcp2, jcm2, jsp2, jsm2, jcp1, jcm1
    integer(kind=4), dimension(N) :: pp
-   complex(kind=8), dimension(0:2*N+5) :: cdj0, cby0, cdy0, cbja, cbjb !XXX: dimension
+   complex(kind=8), dimension(0:2*N+2) :: cdj0, cby0, cdy0, cbja, cbjb !2*N+1 required for even N, 2*N+2 required for odd N
    ! 2D arrays
    complex(kind=8), dimension(N, N) :: ja_np2, ja_np1, ja_np0, ja_nm1, ja_nm2
    complex(kind=8), dimension(N, N) :: jb_np2, jb_np1, jb_np0, jb_nm1, jb_nm2
@@ -48,6 +48,7 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
       s1 = 1
       s2 = 0
    case ('Bx', 'By') 
+      ! all indices are shifted by +1 compared to 'L' and 'T'
       pp = [ (jj, jj=1,2*N-1,2) ]  ! array of odd values
       ! end indices
       enp2 = 2*N+1

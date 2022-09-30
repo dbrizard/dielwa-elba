@@ -177,9 +177,9 @@ class DispElliptic(round_bar.DetDispEquation):
         self.ellipse = {'R':R, 'gamma':gamma, 'theta':theta}
         
         # Characteristic function
-        if mode=='T' and fortran is False:
+        if mode in ('T', 'Bx', 'By') and fortran is False:
             fortran = True
-            print('Forcing Fortran=True because equations for T mode are not written in Python')
+            print('Forcing Fortran=True because equations for %s mode are not written in Python'%mode)
         if fortran:
             def detfun(k, w):
                 """Characteristic determinant function."""
@@ -309,16 +309,18 @@ class DispElliptic(round_bar.DetDispEquation):
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.ylim(ymax=2.)
-        plt.title(typep + "(" + nature + "(det))")
+        #plt.title(typep + "(" + nature + "(det))")
+        plt.title("%s(%s(det)), N=%i, e=%g"%(typep, nature, self.geo['N'], self.geo['e']))
         
         if typep=='contour':
             return CS
         
 if __name__ == "__main__":
     plt.close("all")
-    # %% Resolution_numérique :: FOLLOW FIRST BRANCH
-    if True:
-        e = 0.4
+    
+    # %% Numerical solving: FOLLOW FIRST BRANCH
+    if False:
+        e = 0.8
         N = 4
         # mode = 'By'
         for mode in ('L', 'T', 'Bx', 'By'):
@@ -340,10 +342,16 @@ if __name__ == "__main__":
                 FR.plot(e=[e], figname='sign_imag')
             
             Det.computeKCmap(k=np.linspace(0, 5, 100), c=np.linspace(0.6, 2.2, 100), adim=True)
-            if mode in ('L', 'Bx', 'By'):
-                Det.plotDet_KC('KC', typep='sign', nature='real', figname=mode)
-            elif mode=='T':
-                Det.plotDet_KC('KC', typep='sign', nature='imag', figname=mode)
+            if N%2==1:
+                nat = 'imag'
+                natt = 'real'
+            elif N%2==0:
+                nat = 'real'
+                natt = 'imag'
+            if mode in ('L', 'other'):
+                Det.plotDet_KC('KC', typep='sign', nature=nat, figname=mode)
+            elif mode in ('T', 'Bx', 'By'):
+                Det.plotDet_KC('KC', typep='sign', nature=natt, figname=mode)
             FR.plot(e=[e], figname=mode, branch=mode+'1', x='K', y='C')
             FR.plot(e=[e], figname=mode, branch=mode+'2', x='K', y='C')
         
@@ -382,17 +390,10 @@ if __name__ == "__main__":
         Detpy.plotDet_KC('KC', 'contour', 'real', level=levels)
         Detpy.plotDet_KC('KC', 'contour', 'imag', level=levels)
         Detpy.plotDet_KC('KC', 'contour', 'quotient_abs', level=levels)
+        
     #%% Etude parité N
     if False:
         e = 0.7
-        FR = el.Fraser()
-        FR.plot(e=[e], figname='cont_imag')
-        FR.plot(e=[e], figname='cont_imag', branch=1)
-        FR.plot(e=[e], figname='cont_real')
-        FR.plot(e=[e], figname='cont_real', branch=1)
-        FR.plot()
-        FR.plot(e=[e], figname='sign_imag')
-        FR.plot(e=[e], figname='sign_imag', branch=1)
         N = [4, 6, 8, 10, 12]
         # N = [3, 5, 7, 9, 13]
         coul = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple']
@@ -411,65 +412,29 @@ if __name__ == "__main__":
             Det.plotDet_KC(typep="contour", nature='real', figname="cont_real", colors=cc)
             Det.plotDet_KC(typep="sign", nature='real', figname="sign_real")
             Det.plotDet_KC(typep="sign", figname="sign_imag")
-    #%% KC -- Convergence
-    if False:
-        e = 0.4                            
-        FR = el.Fraser()
-        FR.plot(e=[e], figname='cont_imag')
-        FR.plot(e=[e], figname='cont_imag', branch=1)
-        FR.plot(e=[e], figname='cont_real')
-        FR.plot(e=[e], figname='cont_real', branch=1)
-        N = [3, 4, 5, 6, 7, 8, 9, 10]
-        # N = [3, 4]
-        # coul = ['tab:blue', 'tab:orange']
-        coul = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray']
-        DET = []
-        # Calcul
-        for nn in N:
-            Det = DispElliptic(e=e, N=nn)
-            k =  np.linspace(0.0001, 5/Det.geo["b"], 150)
-            c = np.linspace(0.7*Det.c["c_2"], 1.7*Det.c["c_2"], 100)
-            Det.computeKCmap(k, c, adim = False)
-            DET.append(Det)
             
-        # Affichage
-        for nn, cc, Det in zip(N, coul, DET):
-            Det.plotDet_KC(figname='cont_imag', colors=cc)
-            Det.plotDet_KC(typep="contour", nature='real', figname="cont_real", colors=cc)
-    #%% KC -- Convergence avec 2 N
-    if False:
-        e = 0.4                            
-        FR = el.Fraser()
-        FR.plot(e=[e], figname='cont')
-        FR.plot(e=[e], figname='cont', branch=1)
-        N = [3, 4]
-        coul = ['tab:blue', 'tab:orange']
-        DET = []
-        # Calcul
-        for nn in N:
-            Det = DispElliptic(e=e, N=nn)
-            k =  np.linspace(0.0001, 5/Det.geo["b"], 150)
-            c = np.linspace(0.7*Det.c["c_2"], 1.7*Det.c["c_2"], 100)
-            Det.computeKCmap(k, c, adim = False)
-            DET.append(Det)
-            
-        # Affichage
-        for nn, cc, Det in zip(N, coul, DET):
-            Det.plotDet_KC(figname='cont', colors=cc)
-            Det.plotDet_KC(typep="contour", nature='real', figname="cont", colors=cc)
+
     #%% KC  -- Comportement
-    if False:
+    if True:
         e = 0.9
         N = [3, 4, 5, 6, 8, 9, 10, 11, 12]
+        DET = []
+        # COMPUTE
         for nn in N:
-            Det = DispElliptic(e=e, N=nn, fortran=False)
+            print('='*10), print('N=%i'%nn), print('='*10)
+            Det = DispElliptic(e=e, N=nn, fortran=True, mode='L')
             k =  np.linspace(0.0001, 5/Det.geo["b"], 150)
             c = np.linspace(0.7*Det.c["c_2"], 2.*Det.c["c_2"], 100)
             Det.computeKCmap(k, c, adim = False)
-            if nn%2==0:
-                Det.plotDet_KC(typep="sign", nature='real', figname="sign_real%i"%nn)
+            DET.append(Det)
+        
+        # PLOT
+        for ddet in DET:
+            if ddet.geo['N']%2==0:
+                ddet.plotDet_KC(typep="sign", nature='real', figname="sign_real%i"%ddet.geo['N'])
             else:
-                Det.plotDet_KC(typep="sign", figname="sign_imag%i"%nn)
+                ddet.plotDet_KC(typep="sign", figname="sign_imag%i"%ddet.geo['N'])
+        
     #%% KC
 
     if False:
@@ -532,7 +497,7 @@ if __name__ == "__main__":
         #omega = np.delete(omega, np.array([68, 69]))  # try to "jump" over difficulty!
         # omega = np.linspace(0, 5e6, 500)
         E = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-        Nmax = [7, 7, 7, 7, 7, 7, 7, 7, 7, 7]
+        Nmax = [7]*len(E)
         # E = [0.9]
         # Nmax = [6]
         Nmin = 3
@@ -602,4 +567,4 @@ if __name__ == "__main__":
         plt.ylim(ymin=0.9, ymax=1.7)
                 
         
-        fu.savefigs(path='convergence')
+        fu.savefigs(path='convergence', overw=True)
