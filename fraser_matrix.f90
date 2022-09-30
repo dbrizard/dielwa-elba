@@ -18,7 +18,7 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
    real(kind=8), dimension(N) :: cos_p2, cos_p1, cos_, cos_m1, cos_m2, sin_p2, sin_m2
    complex(kind=8), dimension(N) :: bR, aR, jcp2, jcm2, jsp2, jsm2, jcp1, jcm1
    integer(kind=4), dimension(N) :: pp
-   complex(kind=8), dimension(0:2*N+5) :: cdj0, cby0, cdy0, cbj1, cbj !XXX: dimension
+   complex(kind=8), dimension(0:2*N+5) :: cdj0, cby0, cdy0, cbja, cbjb !XXX: dimension
    ! 2D arrays
    complex(kind=8), dimension(N, N) :: ja_np2, ja_np1, ja_np0, ja_nm1, ja_nm2
    complex(kind=8), dimension(N, N) :: jb_np2, jb_np1, jb_np0, jb_nm1, jb_nm2
@@ -65,30 +65,30 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
 
    ! COMPUTE ALL THE NECESSARY BESSEL FUNCTIONS
    bessel: do i = 1, N
-      call cjyna(enp2, bR(i), nm0, cbj, cdj0, cby0, cdy0)
-      jb_np2(i,:) = cbj(s0:enp2:2)   ! J_{n+2}(bR)
-      jb_np1(i,:) = cbj(s1:enp1:2) ! J_{n+1}(bR)
-      jb_np0(i,:) = cbj(s2:enp0:2) ! J_{n}(bR)
-      jb_nm1(i,1) = ((-1)**1)* cbj(1) ! J_{-1}
-      jb_nm1(i,2:N) = cbj(s1:enm1:2)  ! J_{n-1}(bR)
-      jb_nm2(i,1)  = ((-1)**2)* cbj(2) ! J_{-2}
-      jb_nm2(i,2:N) = cbj(s2:enm2:2)  ! J_{n-2}(bR)
+      call cjyna(enp2, bR(i), nm0, cbjb, cdj0, cby0, cdy0)
+      jb_np2(i,:) = cbjb(s0:enp2:2)   ! J_{n+2}(bR)
+      jb_np1(i,:) = cbjb(s1:enp1:2) ! J_{n+1}(bR)
+      jb_np0(i,:) = cbjb(s2:enp0:2) ! J_{n}(bR)
+      jb_nm1(i,1) = ((-1)**1)* cbjb(1) ! J_{-1}
+      jb_nm1(i,2:N) = cbjb(s1:enm1:2)  ! J_{n-1}(bR)
+      jb_nm2(i,1)  = ((-1)**2)* cbjb(2) ! J_{-2}
+      jb_nm2(i,2:N) = cbjb(s2:enm2:2)  ! J_{n-2}(bR)
       
-      call cjyna(enp2, aR(i), nm0, cbj1, cdj0, cby0, cdy0)
-      ja_np2(i,:)  = cbj1(s0:enp2:2)    ! J_{n+2}(aR)
-      ja_np1(i,:) = cbj1(s1:enp1:2)  ! J_{n+1}(aR)
-      ja_np0(i,:) = cbj1(s2:enp0:2)  ! J_{n}(aR)
-      ja_nm2(i, 2:N) = cbj1(s2:enm2:2)  ! J_{n-2}(aR) 
-      ja_nm2(i,1) =  ((-1)**2)* cbj1(2) ! See DLMF eq. 10.4.1
-      ja_nm1(i,1) = ((-1)**1)* cbj1(1) ! See DLMF eq. 10.4.1
-      ja_nm1(i,2:N) = cbj1(1:enm1:2) ! J_{n-1}(aR)
+      call cjyna(enp2, aR(i), nm0, cbja, cdj0, cby0, cdy0)
+      ja_np2(i,:) = cbja(s0:enp2:2)    ! J_{n+2}(aR)
+      ja_np1(i,:) = cbja(s1:enp1:2)  ! J_{n+1}(aR)
+      ja_np0(i,:) = cbja(s2:enp0:2)  ! J_{n}(aR)
+      ja_nm1(i,1) = ((-1)**1)* cbja(1) ! J_{-1}
+      ja_nm1(i,2:N) = cbja(1:enm1:2) ! J_{n-1}(aR)
+      ja_nm2(i,1) =  ((-1)**2)* cbja(2) ! J_{-2}
+      ja_nm2(i, 2:N) = cbja(s2:enm2:2)  ! J_{n-2}(aR) 
       
       select case (mode)
       case ('Bx', 'By')
-         jb_nm2(i,1) = ((-1)**1)* cbj(1) ! See DLMF eq. 10.4.1
-         jb_nm1(i,:) = cbj(0:enm1:2)  ! J_{n-1}(bR)
-         ja_nm2(i,1) =  ((-1)**1)* cbj1(1) ! See DLMF eq. 10.4.1
-         ja_nm1(i,:) = cbj1(0:enm1:2) ! J_{n-1}(aR)
+         jb_nm2(i,1) = ((-1)**1)* cbjb(1) ! J_{-1}
+         ja_nm2(i,1) = ((-1)**1)* cbja(1) ! J_{-1}
+         jb_nm1(i,:) = cbjb(0:enm1:2) ! J_{n-1}(bR): J_0 ... J_{2*N-1}, n odd
+         ja_nm1(i,:) = cbja(0:enm1:2) ! J_{n-1}(aR): J_0 ... J_{2*N-1}, n odd
       case default
          !print*, "Invalid mode: ", mode
       end select
