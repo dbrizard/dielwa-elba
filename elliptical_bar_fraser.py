@@ -168,6 +168,7 @@ class DispElliptic(round_bar.DetDispEquation):
         if mode in ('L', 'T'):
             theta = (m-1)*np.pi/2/N
         elif mode in ('Bx', 'By'):
+            print('Bx and By implementation should be checked')
             theta = (m-0.5)*np.pi/2/N
         e2 = e**2
         cos__2 = np.cos(theta)**2
