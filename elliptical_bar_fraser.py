@@ -320,28 +320,32 @@ if __name__ == "__main__":
     if True:
         e = 0.4
         N = 4
-        mode = 'By'
-        Det = DispElliptic(e=e, N=N, mode=mode)
-        omega = np.linspace(0, 8e5, 500)  # Ok pour k<1.208
-        # omega = np.linspace(0, 1e6, 4000)  # trying very small step. Ok pour k<1.2182
-        Det.followBranch0(omega, itermax=20)
-        Det.plotFollow()
-
-        plt.figure('sign_imag')
-        plt.plot(Det.b0['k']*Det.geo['b'], Det.b0['c']/Det.c['c_2'], '+-', label='Regula Falsi algo')
-        # plt.ylim(ymax=1.7, ymin=0.7)
-        # plt.xlim(xmin=0., xmax=5)
-
-        FR = el.Fraser()
-        FR.plot(e=[e], figname='sign_imag')
+        # mode = 'By'
+        for mode in ('L', 'T', 'Bx', 'By'):
+            Det = DispElliptic(e=e, N=N, mode=mode)
+            omega = np.linspace(0, 8e5, 500)  # Ok pour k<1.208
+            # omega = np.linspace(0, 1e6, 4000)  # trying very small step. Ok pour k<1.2182
+            
+            follow = False
+            FR = el.Fraser()
+            if follow:
+                Det.followBranch0(omega, itermax=20)
+                Det.plotFollow()
         
-        Det.computeKCmap(k=np.linspace(0, 5, 100), c=np.linspace(0.6, 2.2, 100), adim=True)
-        if mode in ('L', 'Bx', 'By'):
-            Det.plotDet_KC('KC', typep='sign', nature='real', figname='verif')
-        elif mode=='T':
-            Det.plotDet_KC('KC', typep='sign', nature='imag', figname='verif')
-        FR.plot(e=[e], figname='verif', branch=mode+'1', x='K', y='C')
-        FR.plot(e=[e], figname='verif', branch=mode+'2', x='K', y='C')
+                plt.figure('sign_imag')
+                plt.plot(Det.b0['k']*Det.geo['b'], Det.b0['c']/Det.c['c_2'], '+-', label='Regula Falsi algo')
+                # plt.ylim(ymax=1.7, ymin=0.7)
+                # plt.xlim(xmin=0., xmax=5)
+        
+                FR.plot(e=[e], figname='sign_imag')
+            
+            Det.computeKCmap(k=np.linspace(0, 5, 100), c=np.linspace(0.6, 2.2, 100), adim=True)
+            if mode in ('L', 'Bx', 'By'):
+                Det.plotDet_KC('KC', typep='sign', nature='real', figname=mode)
+            elif mode=='T':
+                Det.plotDet_KC('KC', typep='sign', nature='imag', figname=mode)
+            FR.plot(e=[e], figname=mode, branch=mode+'1', x='K', y='C')
+            FR.plot(e=[e], figname=mode, branch=mode+'2', x='K', y='C')
         
     
     #%% Comparaison Fortran/Python + validation Fraser

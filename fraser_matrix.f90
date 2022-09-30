@@ -4,7 +4,7 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
    character(len=2), intent(in):: mode
    integer(kind=4), intent(in):: N
    real(kind=8), intent(in) :: k
-   real(kind=8), intent(in) ::  w
+   real(kind=8), intent(in) :: w
    real(kind=8), intent(in) :: c_1, c_2
    real(kind=8), dimension(:), intent(in) :: R, gamma, theta 
    ! OUTPUT VARIABLES
@@ -15,14 +15,15 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
    integer(kind=4) :: i, j, nn, ee1, ee2, ee3, ee4, ee5, nm0, jj, s0, s1, s2
    complex(kind=8) :: KK, alpha, beta, cc2, cc1, c
    ! 1D arrays
-   real(kind=8), dimension(N) :: cos_p2, cos_m2, sin_p2, sin_m2, cos_, cos_p1, cos_m1
-   complex(kind=8), dimension(N) :: bR, aR, jc1, jc2, js1, js2, j1c1, j1c2
+   real(kind=8), dimension(N) :: cos_p2, cos_p1, cos_, cos_m1, cos_m2, sin_p2, sin_m2
+   complex(kind=8), dimension(N) :: bR, aR, jcp2, jcm2, jsp2, jsm2, jcp1, jcm1
    integer(kind=4), dimension(N) :: pp
-   complex(kind=8), dimension(0:2*N+5) :: cdj0,cby0,cdy0, cbj1, cbj
+   complex(kind=8), dimension(0:2*N+5) :: cdj0, cby0, cdy0, cbj1, cbj !XXX: dimension
    ! 2D arrays
-   complex(kind=8), dimension(N, N) ::  ja, ja_, jb_, j1b, j1b_, jnb, jna, ja1, ja1_, jb
+   complex(kind=8), dimension(N, N) :: ja_np2, ja_np1, ja_np0, ja_nm1, ja_nm2
+   complex(kind=8), dimension(N, N) :: jb_np2, jb_np1, jb_np0, jb_nm1, jb_nm2
    complex(kind=8), dimension(N, N) :: A11, A12, A13, A21, A22, A23, A31, A32, A33
-   
+ 
    sign = 0.
    c = w/k
    cc2 = (c/c_2)**2
@@ -65,31 +66,31 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
    ! COMPUTE ALL THE NECESSARY BESSEL FUNCTIONS
    bessel: do i = 1, N
       call cjyna(ee1, bR(i), nm0, cbj, cdj0, cby0, cdy0)
-      jb(i,:)  = cbj(s0:ee1:2)   ! J_{n+2}(bR)
-      j1b(i,:) = cbj(s1:ee2:2) ! J_{n+1}(bR)
-      jnb(i,:) = cbj(s2:ee3:2) ! J_{n}(bR)
-      jb_(i,2:N) = cbj(s2:ee4:2)  ! J_{n-2}(bR)
-      jb_(i,1)  = ((-1)**2)* cbj(2) ! See DLMF eq. 10.4.1
-      j1b_(i,1) = ((-1)**1)* cbj(1) ! See DLMF eq. 10.4.1
-      j1b_(i,2:N) = cbj(s1:ee5:2)  ! J_{n-1}(bR)
+      jb_np2(i,:) = cbj(s0:ee1:2)   ! J_{n+2}(bR)
+      jb_np1(i,:) = cbj(s1:ee2:2) ! J_{n+1}(bR)
+      jb_np0(i,:) = cbj(s2:ee3:2) ! J_{n}(bR)
+      jb_nm1(i,1) = ((-1)**1)* cbj(1) ! See DLMF eq. 10.4.1
+      jb_nm1(i,2:N) = cbj(s1:ee5:2)  ! J_{n-1}(bR)
+      jb_nm2(i,1)  = ((-1)**2)* cbj(2) ! See DLMF eq. 10.4.1
+      jb_nm2(i,2:N) = cbj(s2:ee4:2)  ! J_{n-2}(bR)
       
       call cjyna(ee1, aR(i), nm0, cbj1, cdj0, cby0, cdy0)
-      ja(i,:)  = cbj1(s0:ee1:2)    ! J_{n+2}(aR)
-      jna(i,:) = cbj1(s2:ee3:2)  ! J_{n}(aR)
-      ja1(i,:) = cbj1(s1:ee2:2)  ! J_{n+1}(aR)
-      ja_(i, 2:N) = cbj1(s2:ee4:2)  ! J_{n-2}(aR) 
-      ja_(i,1) =  ((-1)**2)* cbj1(2) ! See DLMF eq. 10.4.1
-      ja1_(i,1) = ((-1)**1)* cbj1(1) ! See DLMF eq. 10.4.1
-      ja1_(i,2:N) = cbj1(1:ee5:2) ! J_{n-1}(aR)
+      ja_np2(i,:)  = cbj1(s0:ee1:2)    ! J_{n+2}(aR)
+      ja_np1(i,:) = cbj1(s1:ee2:2)  ! J_{n+1}(aR)
+      ja_np0(i,:) = cbj1(s2:ee3:2)  ! J_{n}(aR)
+      ja_nm2(i, 2:N) = cbj1(s2:ee4:2)  ! J_{n-2}(aR) 
+      ja_nm2(i,1) =  ((-1)**2)* cbj1(2) ! See DLMF eq. 10.4.1
+      ja_nm1(i,1) = ((-1)**1)* cbj1(1) ! See DLMF eq. 10.4.1
+      ja_nm1(i,2:N) = cbj1(1:ee5:2) ! J_{n-1}(aR)
       
       select case (mode)
       case ('Bx', 'By')
-         jb_(i,1) = ((-1)**1)* cbj(1) ! See DLMF eq. 10.4.1
-         j1b_(i,:) = cbj(0:ee5:2)  ! J_{n-1}(bR)
-         ja_(i,1) =  ((-1)**1)* cbj1(1) ! See DLMF eq. 10.4.1
-         ja1_(i,:) = cbj1(0:ee5:2) ! J_{n-1}(aR)
+         jb_nm2(i,1) = ((-1)**1)* cbj(1) ! See DLMF eq. 10.4.1
+         jb_nm1(i,:) = cbj(0:ee5:2)  ! J_{n-1}(bR)
+         ja_nm2(i,1) =  ((-1)**1)* cbj1(1) ! See DLMF eq. 10.4.1
+         ja_nm1(i,:) = cbj1(0:ee5:2) ! J_{n-1}(aR)
       case default
-         print*, "Invalid mode: ", mode
+         !print*, "Invalid mode: ", mode
       end select
    end do bessel
 
@@ -122,22 +123,22 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
          print*, "Invalid mode : ", mode
       end select
 
-      jc1 = jb(:,j)*cos_p2
-      jc2 = jb_(:,j)*cos_m2
-      js1 = jb(:,j)*sin_p2
-      js2 = jb_(:,j)*sin_m2
-      j1c1 = j1b(:,j)*cos_p1
-      j1c2 = j1b_(:,j)*cos_m1
+      jcp2 = jb_np2(:,j)*cos_p2
+      jcp1 = jb_np1(:,j)*cos_p1
+      jcm1 = jb_nm1(:,j)*cos_m1
+      jcm2 = jb_nm2(:,j)*cos_m2
+      jsp2 = jb_np2(:,j)*sin_p2
+      jsm2 = jb_nm2(:,j)*sin_m2
 
-      A11(:, j) = -jc1 + jc2
-      A12(:, j) = jc1 + jc2 - 2*jnb(:,j)*cos_
-      A13(:, j) =  ja(:,j)*cos_p2 + ja_(:,j)*cos_m2 - 2*(2*KK-1)*jna(:,j)*cos_
-      A21(:, j) = -js1 - js2
-      A22(:, j) =  js1 - js2
-      A23(:, j) = ja(:,j)*sin_p2 - ja_(:,j)*sin_m2
-      A31(:, j) = ((j1c1 + j1c2)*k/beta)*cmplx(0,1)
-      A32(:, j) = ((j1c1 - j1c2)*(beta**2-k**2)/(beta*k))*cmplx(0, 1)
-      A33(:, j) = ((-ja1(:,j)*cos_p1 + ja1_(:,j)*cos_m1)*2*k/alpha)*cmplx(0, 1)  
+      A11(:, j) = -jcp2 + jcm2
+      A12(:, j) =  jcp2 + jcm2 - 2*jb_np0(:,j)*cos_
+      A13(:, j) =  ja_np2(:,j)*cos_p2 + ja_nm2(:,j)*cos_m2 - 2*(2*KK-1)*ja_np0(:,j)*cos_
+      A21(:, j) = -jsp2 - jsm2
+      A22(:, j) =  jsp2 - jsm2
+      A23(:, j) =  ja_np2(:,j)*sin_p2 - ja_nm2(:,j)*sin_m2
+      A31(:, j) = ((jcp1 + jcm1)*k/beta)*cmplx(0,1)
+      A32(:, j) = ((jcp1 - jcm1)*(beta**2-k**2)/(beta*k))*cmplx(0, 1)
+      A33(:, j) = ((-ja_np1(:,j)*cos_p1 + ja_nm1(:,j)*cos_m1)*2*k/alpha)*cmplx(0, 1)  
    end do aiiblocks
 
    ! BUILD A MATRIX
