@@ -168,7 +168,6 @@ class DispElliptic(round_bar.DetDispEquation):
         if mode in ('L', 'T'):
             theta = (m-1)*np.pi/2/N
         elif mode in ('Bx', 'By'):
-            print('Bx and By implementation should be checked')
             theta = (m-0.5)*np.pi/2/N
         e2 = e**2
         cos__2 = np.cos(theta)**2
@@ -193,7 +192,8 @@ class DispElliptic(round_bar.DetDispEquation):
         self.vectorized = False  # detfun is not vectorized
         self.dim = {'c':c_2, 'l':b}  # for dimensionless variables
         self.dimlab = {'c':'c_2', 'l':'b'}  # name of dimensionless variables for use un labels
-
+        self.mode = mode
+        
     
     def plot_ellipse(self):
         """Plot elliptical cross section
@@ -219,9 +219,9 @@ if __name__ == "__main__":
     plt.close("all")
     
     # %% Numerical solving: FOLLOW FIRST BRANCH
-    if False:
+    if True:
         e = 0.8
-        N = 3
+        N = 4
         # mode = 'By'
         for mode in ('L', 'T', 'Bx', 'By'):
             Det = DispElliptic(e=e, N=N, mode=mode)
@@ -242,16 +242,20 @@ if __name__ == "__main__":
                 FR.plot(e=[e], figname='sign_imag')
             
             Det.computeKCmap(k=np.linspace(0, 5, 100), c=np.linspace(0.6, 2.2, 100), adim=True)
-            if N%2==1:
-                nat = 'imag'
-                natt = 'real'
-            elif N%2==0:
+            if mode in ('L', 'T'):
+                if N%2==1:
+                    if mode in ('L'):
+                        nat = 'imag'
+                    elif mode in ('T'):
+                        nat = 'real'
+                elif N%2==0:
+                    if mode in ('L'):
+                        nat = 'real'
+                    elif mode in ('T'):
+                        nat = 'imag'
+            elif mode in ('Bx', 'By'):
                 nat = 'real'
-                natt = 'imag'
-            if mode in ('L', 'other'):
-                Det.plotDet_KC('KC', typep='sign', nature=nat, figname=mode)
-            elif mode in ('T', 'Bx', 'By'):
-                Det.plotDet_KC('KC', typep='sign', nature=natt, figname=mode)
+            Det.plotDet_KC('KC', typep='sign', nature=nat, figname=mode)
             FR.plot(e=[e], figname=mode, branch=mode+'1', x='K', y='C')
             FR.plot(e=[e], figname=mode, branch=mode+'2', x='K', y='C')
         
@@ -319,10 +323,11 @@ if __name__ == "__main__":
             
 
     #%% Compute maps for all 4 modes
-    if True:
+    if False:
+        modes = ['L']
         modes = ['L', 'T', 'Bx', 'By']
         N = [3, 4, 5]
-        N = [3, 4, 5, 6, 8, 9, 10, 11, 12]
+        N = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
         e = 0.9
         for mode in modes:
             print('\n\n'+'*'*10+' mode=%s '%mode+'*'*10)
@@ -339,9 +344,14 @@ if __name__ == "__main__":
             # PLOT
             for ddet in DET:
                 title = '%s mode, e=%g, N=%i'%(mode, ddet.geo['e'], ddet.geo['N'])
-                ddet.plotDet(xy='KC', typep="sign", nature='real', title=title+', real')
-                ddet.plotDet(xy='KC', typep="sign", nature='imag', title=title+', imag')
-            fu.savefigs(path='maps/mode%s'%mode, prefix='map%s'%mode, close=True, overw=True)
+                fn = '%s-e%02gN%02i'%(ddet.mode, ddet.geo['e']*10, ddet.geo['N'])
+                ddet.plotDet(xy='KC', typep='sign', nature='real',
+                             title=title+', real', figname=fn+'-r')
+                ddet.plotDet(xy='KC', typep='sign', nature='imag', 
+                             title=title+', imag', figname=fn+'-i')
+            fu.savefigs(path='maps/mode%s'%mode, prefix='map', close=True, overw=True)
+            # gather pdf figures with pdfjam: 
+            # pdfjam modeT/*.pdf --nup 2x5 --outfile mapsT.pdf
         
     #%% KC
 
