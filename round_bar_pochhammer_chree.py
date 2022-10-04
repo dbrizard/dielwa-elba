@@ -75,12 +75,13 @@ class DetDispEquation:
         self.dimlab = {'c':'c_0', 'l':'a'}
 
 
-    def computeKWmap(self, k, w, adim=True):
+    def computeKWmap(self, k, w, adim=True, verbose=True):
         """Compute the value of the characteristic equation on a (k,w) grid
 
         :param array k: wavenumbers
         :param array w: circular frequency
         :param bool adim: True if the given input arguments are dimensionless
+        :param bool verbose: print progress and computation time
         """
         if adim:
             K = k
@@ -98,26 +99,29 @@ class DetDispEquation:
                 Z[ii, :] = self.detfun(k, om)
         else:
             for ii, om in enumerate(w):
-                print('%i/%i'%(ii, len(w)))
+                if ii%10==0 and verbose:
+                    print('%i/%i'%(ii, len(w)))
                 for jj, kk in enumerate(k):
                     Z[ii, jj] = self.detfun(kk, om)
 
         end = time.clock()
         temps = end - start
         npts = len(w)*len(k)
-        print('#'*35)
-        print('Took %g s to compute %i points'%(temps, npts))
-        print('%g ms/pt'%(temps/npts*1e3))
-        print('#'*35)
+        if verbose:
+            print('#'*35)
+            print('Took %g s to compute %i points'%(temps, npts))
+            print('%g ms/pt'%(temps/npts*1e3))
+            print('#'*35)
         self.kw = {"w": w, "k": k, "det": Z, "K": K, "W": W}
 
 
-    def computeWCmap(self, w, c, adim=True):
+    def computeWCmap(self, w, c, adim=True, verbose=True):
         """Compute the value of the characteristic equation on a (w,c) grid
 
         :param array w: circular frequency
         :param array c: velocity
         :param bool adim: True if the given input arguments are dimensionless
+        :param bool verbose: print progress and computation time
         """
         if adim:
             C = c
@@ -136,26 +140,29 @@ class DetDispEquation:
                 Z[:, ii] = self.detfun(kk, om)
         else:
             for ii, om in enumerate(w):
-                print('%i/%i'%(ii,len(w)))
+                if ii%10==0 and verbose:
+                    print('%i/%i'%(ii,len(w)))
                 for jj, kk in enumerate(om / c):
                     Z[jj, ii] = self.detfun(kk, om)
         
         end = time.clock()
         temps = end - start
         npts = len(w)*len(c)
-        print('#'*35)
-        print('Took %g s to compute %i points'%(temps, npts))
-        print('%g ms/pt'%(temps/npts*1e3))
-        print('#'*35)
+        if verbose:
+            print('#'*35)
+            print('Took %g s to compute %i points'%(temps, npts))
+            print('%g ms/pt'%(temps/npts*1e3))
+            print('#'*35)
         self.wc = {"w": w, "c": c, "det": Z, "C": C, "W": W}
 
 
-    def computeKCmap(self, k, c, adim=True):
+    def computeKCmap(self, k, c, adim=True, verbose=True):
         """Compute the value of the characteristic equation on a (k,c) grid
 
         :param array k: wavenumbers
         :param array c: velocity
         :param bool adim: True if the given input arguments are dimensionless
+        :param bool verbose: print progress and computation time
         """
         if adim:
             K = k
@@ -175,7 +182,8 @@ class DetDispEquation:
             print('not sure')
         else:
             for ii, cc in enumerate(c):
-                print('%i/%i'%(ii,len(c)))
+                if ii%10==0 and verbose:
+                    print('%i/%i'%(ii,len(c)))
                 for jj, kk in enumerate(k):
                     om = kk*cc
                     Z[ii, jj] = self.detfun(kk, om)
@@ -183,10 +191,11 @@ class DetDispEquation:
         end = time.clock()
         temps = end - start
         npts = len(k)*len(c)
-        print('#'*35)
-        print('Took %g s to compute %i points'%(temps, npts))
-        print('%g ms/pt'%(temps/npts*1e3))
-        print('#'*35)
+        if verbose:
+            print('#'*35)
+            print('Took %g s to compute %i points'%(temps, npts))
+            print('%g ms/pt'%(temps/npts*1e3))
+            print('#'*35)
 
         self.kc = {"c": c, "k": k, "det": Z, "K": K, "C": C}
 
@@ -258,7 +267,10 @@ class DetDispEquation:
 
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
-        plt.title(typep + "(" + nature + "(det))")
+        if title is not None:
+            plt.title(title)
+        else:
+            plt.title(typep + "(" + nature + "(det))")
         #plt.title("%s(%s(det)), N=%i, e=%g"%(typep, nature, self.geo['N'], self.geo['e']))
         #plt.ylim(ymin=0)
         

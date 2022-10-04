@@ -213,75 +213,7 @@ class DispElliptic(round_bar.DetDispEquation):
         for ii in range(self.geo['N']):
             plt.quiver(0, 0, x_g[ii], y_g[ii], scale=0.09, color='r')
      
-        
 
-
-        
-        
-    # def plotDet_KC(self, xy="KC", typep="contour", nature="imag", level=[0], 
-    #                figname=None, adim=True, colors='b', lw=1):
-    #     """
-    #     Tracer les courbes de dispersion.
-
-    #     Parameters
-    #     ----------
-    #     xy : string, optional
-    #         Domaine. The default is "WC".
-    #     typep : string, optional
-    #         Type du graphiqDet.computeKCmap(k, c)ue. The default is "contour".
-    #     nature : string, optional
-    #         Partie réelle ou imaginaire du determinant. The default is "imag".
-    #     figname : string, optional
-    #         Nom de la figure. The default is None.
-
-    #     Returns
-    #     -------
-    #     None.
-
-    #     """
-    #     if adim:
-    #         x = self.kc["K"]
-    #         y = self.kc["C"]
-    #         det = self.kc["det"]
-    #         xlabel = "K = k*b"
-    #         ylabel = "C=c/c_2[-]"
-    #     else:
-    #         x = self.kc['k']
-    #         y = self.kc['c']
-    #         det = self.kc["det"]
-    #         xlabel = "k [1/m]"
-    #         ylabel = "c [m/s]"
-            
-
-    #     plt.figure(figname)
-    #     if typep == "contour":
-    #         # level = [0]
-    #         if nature == "real":
-    #             data = det.real
-    #         elif nature == "imag":
-    #             data = det.imag
-    #         elif nature=='abs':
-    #             data = abs(det)
-    #         elif nature=='quotient_abs':
-    #             data = abs(det.real)/abs(det.imag)
-    #         CS = plt.contour(x, y, data, level, colors=colors, linewidths=lw)
-    #         # CL = plt.clabel(CS, fmt='%g')
-    #     elif typep == "sign":
-    #         if nature == "real":
-    #             data = np.sign(det.real)
-    #         elif nature == "imag":
-    #             data = np.sign(det.imag)
-    #         plt.pcolormesh(x, y, data, shading="auto", cmap="cool", rasterized=True)
-    #         # plt.colorbar()
-            
-    #     plt.xlabel(xlabel)
-    #     plt.ylabel(ylabel)
-    #     plt.ylim(ymax=2.)
-    #     #plt.title(typep + "(" + nature + "(det))")
-    #     plt.title("%s(%s(det)), N=%i, e=%g"%(typep, nature, self.geo['N'], self.geo['e']))
-        
-    #     if typep=='contour':
-    #         return CS
         
 if __name__ == "__main__":
     plt.close("all")
@@ -289,7 +221,7 @@ if __name__ == "__main__":
     # %% Numerical solving: FOLLOW FIRST BRANCH
     if False:
         e = 0.8
-        N = 4
+        N = 3
         # mode = 'By'
         for mode in ('L', 'T', 'Bx', 'By'):
             Det = DispElliptic(e=e, N=N, mode=mode)
@@ -359,6 +291,10 @@ if __name__ == "__main__":
         Detpy.plotDet_KC('KC', 'contour', 'imag', level=levels)
         Detpy.plotDet_KC('KC', 'contour', 'quotient_abs', level=levels)
         
+    #%% Case e=0, comparison with round bar
+    if False:
+        e=0
+        
     #%% Etude parité N
     if False:
         e = 0.7
@@ -382,27 +318,30 @@ if __name__ == "__main__":
             Det.plotDet_KC(typep="sign", figname="sign_imag")
             
 
-    #%% KC  -- Comportement
+    #%% Compute maps for all 4 modes
     if True:
-        e = 0.9
-        N = [3, 4, 5, 6, 8, 9, 10, 11, 12]
+        modes = ['L', 'T', 'Bx', 'By']
         N = [3, 4, 5]
-        DET = []
-        # COMPUTE
-        for nn in N:
-            print('='*10), print('N=%i'%nn), print('='*10)
-            Det = DispElliptic(e=e, N=nn, fortran=True, mode='L')
-            k =  np.linspace(0.0001, 5/Det.geo["b"], 150)
-            c = np.linspace(0.7*Det.c["c_2"], 2.*Det.c["c_2"], 100)
-            Det.computeKCmap(k, c, adim = False)
-            DET.append(Det)
-        
-        # PLOT
-        for ddet in DET:
-            if ddet.geo['N']%2==0:
-                ddet.plotDet(xy='KC', typep="sign", nature='real', figname="sign_real%i"%ddet.geo['N'])
-            else:
-                ddet.plotDet(xy='KC', typep="sign", figname="sign_imag%i"%ddet.geo['N'])
+        N = [3, 4, 5, 6, 8, 9, 10, 11, 12]
+        e = 0.9
+        for mode in modes:
+            print('\n\n'+'*'*10+' mode=%s '%mode+'*'*10)
+            DET = []
+            # COMPUTE
+            for nn in N:
+                print('='*10+'N=%i'%nn+'='*10)
+                Det = DispElliptic(e=e, N=nn, fortran=True, mode=mode)
+                k =  np.linspace(0.0001, 5/Det.geo["b"], 150)
+                c = np.linspace(0.7*Det.c["c_2"], 2.*Det.c["c_2"], 100)
+                Det.computeKCmap(k, c, adim=False, verbose=False)
+                DET.append(Det)
+            
+            # PLOT
+            for ddet in DET:
+                title = '%s mode, e=%g, N=%i'%(mode, ddet.geo['e'], ddet.geo['N'])
+                ddet.plotDet(xy='KC', typep="sign", nature='real', title=title+', real')
+                ddet.plotDet(xy='KC', typep="sign", nature='imag', title=title+', imag')
+            fu.savefigs(path='maps/mode%s'%mode, prefix='map%s'%mode, close=True, overw=True)
         
     #%% KC
 
@@ -466,6 +405,7 @@ if __name__ == "__main__":
         #omega = np.delete(omega, np.array([68, 69]))  # try to "jump" over difficulty!
         # omega = np.linspace(0, 5e6, 500)
         E = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+        E = [0., 0.1, 0.2, 0.3]
         Nmax = [7]*len(E)
         # E = [0.9]
         # Nmax = [6]
@@ -536,4 +476,4 @@ if __name__ == "__main__":
         plt.ylim(ymin=0.9, ymax=1.7)
                 
         
-        fu.savefigs(path='convergence', overw=True)
+        fu.savefigs(path='convergence', overw=False)
