@@ -194,6 +194,29 @@ class DispElliptic(round_bar.DetDispEquation):
         self.dimlab = {'c':'c_2', 'l':'b'}  # name of dimensionless variables for use un labels
         self.mode = mode
         
+        self._nature = self._defineAutoReIm4map()
+        
+        
+    def _defineAutoReIm4map(self):
+        """Define if Re or Im part of characteristic equation should used for
+        sign maps
+        
+        """
+        if self.mode in ('L', 'T'):
+            if N%2==1:
+                if self.mode in ('L'):
+                    nat = 'imag'
+                elif self.mode in ('T'):
+                    nat = 'real'
+            elif N%2==0:
+                if self.mode in ('L'):
+                    nat = 'real'
+                elif self.mode in ('T'):
+                    nat = 'imag'
+        elif self.mode in ('Bx', 'By'):
+            nat = 'real'
+        return nat
+        
     
     def plot_ellipse(self):
         """Plot elliptical cross section
@@ -242,20 +265,8 @@ if __name__ == "__main__":
                 FR.plot(e=[e], figname='sign_imag')
             
             Det.computeKCmap(k=np.linspace(0, 5, 100), c=np.linspace(0.6, 2.2, 100), adim=True)
-            if mode in ('L', 'T'):
-                if N%2==1:
-                    if mode in ('L'):
-                        nat = 'imag'
-                    elif mode in ('T'):
-                        nat = 'real'
-                elif N%2==0:
-                    if mode in ('L'):
-                        nat = 'real'
-                    elif mode in ('T'):
-                        nat = 'imag'
-            elif mode in ('Bx', 'By'):
-                nat = 'real'
-            Det.plotDet_KC('KC', typep='sign', nature=nat, figname=mode)
+
+            Det.plotDet('KC', typep='sign', nature='auto', figname=mode)
             FR.plot(e=[e], figname=mode, branch=mode+'1', x='K', y='C')
             FR.plot(e=[e], figname=mode, branch=mode+'2', x='K', y='C')
         

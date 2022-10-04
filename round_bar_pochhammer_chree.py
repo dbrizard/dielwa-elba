@@ -73,6 +73,16 @@ class DetDispEquation:
         self.vectorized = True  # detfun is vectorized
         self.dim = {'c':self.c['co'], 'l':a}
         self.dimlab = {'c':'c_0', 'l':'a'}
+        
+        self._nature = self._defineAutoReIm4map()
+
+
+    def _defineAutoReIm4map(self):
+        """Define if Re or Im part of characteristic equation should used for
+        sign maps
+        
+        """
+        return 'real'
 
 
     def computeKWmap(self, k, w, adim=True, verbose=True):
@@ -212,13 +222,13 @@ class DetDispEquation:
         :param str title: plot title
         :param coul color: color for the contour plot
         """
-        if xy == "WC":
+        if xy=="WC":
             x = self.wc["W"]
             y = self.wc["C"]
             det = self.wc["det"]
             xlabel = "$\\Omega=\\omega %s/%s$[-]"%(self.dimlab['l'], self.dimlab['c'])
             ylabel = "$C=c/%s [-]$"%self.dimlab['c']
-        elif xy == "KW":
+        elif xy=="KW":
             x = self.kw["K"]
             y = self.kw["W"]
             det = self.kw["det"]
@@ -230,36 +240,40 @@ class DetDispEquation:
             det = self.kc['det']
             xlabel = 'K [-]'
             ylabel = 'C [-]'
+        
+        if nature=='auto':
+            nature = self._nature
+            
 
         plt.figure(figname)
-        if typep == "contour":
-            if nature == "real":
+        if typep=="contour":
+            if nature=="real":
                 data = det.real
-            elif nature == "imag":
+            elif nature=="imag":
                 data = det.imag
-            elif nature == "abs":
+            elif nature=="abs":
                 data = abs(det)
 
             CS = plt.contour(x, y, data, level, 
                              colors=colors, linewidths=1)
             # CL = plt.clabel(CS, fmt='%g')
 
-        elif typep == "sign":
-            if nature == "real":
+        elif typep=="sign":
+            if nature=="real":
                 data = np.sign(det.real)
-            elif nature == "imag":
+            elif nature=="imag":
                 data = np.sign(det.imag)
             else:
                 return  # essaie de tracer qd même
 
             plt.pcolormesh(x, y, data, shading="auto", cmap="cool")
 
-        elif typep == "log":
-            if nature == "real":
+        elif typep=="log":
+            if nature=="real":
                 data = np.log10(det.real)
-            elif nature == "imag":
+            elif nature=="imag":
                 data = np.log10(det.imag)
-            elif nature == "abs":
+            elif nature=="abs":
                 data = np.log10(det)
 
             plt.pcolormesh(x, y, data, shading="auto", cmap="cool")
@@ -316,11 +330,11 @@ class DetDispEquation:
             
         
         plt.figure(figname)
-        if typep == "contour":
+        if typep=="contour":
             # level = [0]
-            if nature == "real":
+            if nature=="real":
                 data = det.real
-            elif nature == "imag":
+            elif nature=="imag":
                 data = det.imag
             elif nature=='abs':
                 data = abs(det)
@@ -328,10 +342,10 @@ class DetDispEquation:
                 data = abs(det.real)/abs(det.imag)
             CS = plt.contour(x, y, data, level, colors=colors, linewidths=lw)
             # CL = plt.clabel(CS, fmt='%g')
-        elif typep == "sign":
-            if nature == "real":
+        elif typep=="sign":
+            if nature=="real":
                 data = np.sign(det.real)
-            elif nature == "imag":
+            elif nature=="imag":
                 data = np.sign(det.imag)
             plt.pcolormesh(x, y, data, shading="auto", cmap="cool", rasterized=True)
             # plt.colorbar()
@@ -627,7 +641,7 @@ def prediction(WW, XI, wp, c_, extrap, verbose, speedPred=True):
 
     return xio
 
-if __name__ == "__main__":
+if __name__=="__main__":
     plt.close("all")
     
     # %% TEST CLASS
@@ -639,7 +653,7 @@ if __name__ == "__main__":
                          c=np.linspace(0.5 * Det.c["co"], 4 * Det.c["co"], 200),
                          adim=False)
         for typep in ("contour", "sign", "log"):
-            for nature in ("real", "imag", "abs"):
+            for nature in ("real", "imag", "abs", 'auto'):
                     Det.plotDet(xy="WC", typep=typep, nature=nature, colors='g')
     
     # KW map
@@ -648,7 +662,7 @@ if __name__ == "__main__":
                          w=np.linspace(0, 1e6, 500),
                          adim=False)
         for typep in ("contour", "sign", "log"):
-            for nature in ("real", "imag", "abs"):
+            for nature in ("real", "imag", "abs", 'auto'):
                     Det.plotDet(xy="KW", typep=typep, nature=nature, colors='g')
     
     # KC map
@@ -657,7 +671,7 @@ if __name__ == "__main__":
                          c=np.linspace(0.5 * Det.c["co"], 4 * Det.c["co"], 200),
                          adim=False)
         for typep in ("contour", "sign", "log"):
-            for nature in ("real", "imag", "abs"):
+            for nature in ("real", "imag", "abs", 'auto'):
                     Det.plotDet(xy="KC", typep=typep, nature=nature, colors='g')        
 
     # %% Test follow Branch
