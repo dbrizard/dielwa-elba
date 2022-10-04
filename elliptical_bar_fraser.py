@@ -25,18 +25,17 @@ import pickle
 
 import round_bar_pochhammer_chree as round_bar
 import ellipticReferenceSolutions as el
-import fraser_matrix
+from fraser_elliptical import characteristic_matrix
 
 import figutils as fu
 
-def char_func_elliptic_fortran(k, w, R, N, theta, gamma, c_1, c_2, mode='L',
+def char_func_elliptic_fortran(k, w, R, theta, gamma, c_1, c_2, mode='L',
                                rEturn='det'):
     """Characteristic function for elliptical bar, with underlying Fortran code
     
     :param float k: wavenumber
     :param float w: circular frequency
     :param array R: radius of collocation points
-    :param int N: number of collocation points
     :param array theta: angle of collocation points
     :param array gamma: angle of normal at collocation points
     :param float c_1: velocity
@@ -44,7 +43,8 @@ def char_func_elliptic_fortran(k, w, R, N, theta, gamma, c_1, c_2, mode='L',
     :param str mode: wave propagation mode ('L', 'T', 'Bx', 'By')
     :param str rEturn: 'det' or 'matrix'
     """
-    A = fraser_matrix.mat(k, w, R, N, gamma, theta, c_1, c_2, mode)
+    N = len(theta)
+    A = characteristic_matrix(k, w, N, R, theta, gamma, c_1, c_2, mode)
     if mode=='L':
         B = A[1:, 1:]
         detA = np.linalg.det(B)
@@ -65,18 +65,18 @@ def char_func_elliptic_fortran(k, w, R, N, theta, gamma, c_1, c_2, mode='L',
 
 
 
-def char_func_elliptic(k, w, R, N, theta, gamma, c_1, c_2):
+def char_func_elliptic(k, w, R, theta, gamma, c_1, c_2):
     """Characteristic function for elliptical bar
     
     :param float k: wavenumber
     :param float w: circular frequency
     :param array R: radius of collocation points
-    :param int N: number of collocation points
     :param array theta: angle of collocation points
     :param array gamma: angle of normal at collocation points
     :param float c_1: velocity
     :param float c_2: velocity
     """
+    N = len(theta)
     c = w/k
     cc2 = (c/c_2)**2
     cc1 = (c/c_1)**2 # XXX tester si plus rapide ou pas
@@ -192,12 +192,12 @@ class DispElliptic(round_bar.DetDispEquation):
         if fortran:
             def detfun(k, w):
                 """Characteristic determinant function."""
-                return char_func_elliptic_fortran(k, w, R, N, theta, gamma, 
+                return char_func_elliptic_fortran(k, w, R, theta, gamma, 
                                                   c_1, c_2, mode=mode, rEturn='det')
         else:
             def detfun(k, w):
                 """Characteristic determinant function."""
-                return char_func_elliptic(k, w, R, N, theta, gamma, c_1, c_2)
+                return char_func_elliptic(k, w, R, theta, gamma, c_1, c_2)
         self.detfun = detfun
         self.vectorized = False  # detfun is not vectorized
         self.dim = {'c':c_2, 'l':b}  # for dimensionless variables
@@ -286,7 +286,7 @@ if __name__ == "__main__":
     plt.close("all")
     
     # %% Numerical solving: FOLLOW FIRST BRANCH
-    if False:
+    if True:
         e = 0.8
         N = 4
         modes = ('L', 'T', 'Bx', 'By')
@@ -489,7 +489,7 @@ if __name__ == "__main__":
         fu.savefigs(path='convergence', overw=False)
     
     #%% Compute residual stress between collocation points
-    if True:
+    if False:
         Det = DispElliptic(e=0.5, N=4, mode='L')
         omega = np.linspace(0, 8e5, 500) 
         Det.followBranch0(omega, itermax=20, jumpC2=0.004, interp='cubic')

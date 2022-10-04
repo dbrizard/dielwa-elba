@@ -1,4 +1,4 @@
-subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
+subroutine characteristic_matrix(k, w, N, R, theta, gamma, c_1, c_2, mode, A)
    implicit none
    ! INPUT VARIABLES
    character(len=2), intent(in):: mode
@@ -155,4 +155,4 @@ subroutine mat(k, w, R, N, gamma, theta, c_1, c_2, mode, A)
    A(2*N+1:3*N, 1:N)       = A31  ! First raw is zero (DEF)
    A(2*N+1:3*N, N+1:2*N)   = A32
    A(2*N+1:3*N, 2*N+1:3*N) = A33
- end subroutine mat
+ end subroutine characteristic_matrix
