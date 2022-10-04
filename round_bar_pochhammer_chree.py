@@ -73,14 +73,25 @@ class DetDispEquation:
         self.vectorized = True  # detfun is vectorized
         self.dim = {'c':self.c['co'], 'l':a}
         self.dimlab = {'c':'c_0', 'l':'a'}
+        
+        self._nature = self._defineAutoReIm4map()
 
 
-    def computeKWmap(self, k, w, adim=True):
+    def _defineAutoReIm4map(self):
+        """Define if Re or Im part of characteristic equation should used for
+        sign maps
+        
+        """
+        return 'real'
+
+
+    def computeKWmap(self, k, w, adim=True, verbose=True):
         """Compute the value of the characteristic equation on a (k,w) grid
 
         :param array k: wavenumbers
         :param array w: circular frequency
         :param bool adim: True if the given input arguments are dimensionless
+        :param bool verbose: print progress and computation time
         """
         if adim:
             K = k
@@ -98,26 +109,29 @@ class DetDispEquation:
                 Z[ii, :] = self.detfun(k, om)
         else:
             for ii, om in enumerate(w):
-                print('%i/%i'%(ii, len(w)))
+                if ii%10==0 and verbose:
+                    print('%i/%i'%(ii, len(w)))
                 for jj, kk in enumerate(k):
                     Z[ii, jj] = self.detfun(kk, om)
 
         end = time.clock()
         temps = end - start
         npts = len(w)*len(k)
-        print('#'*35)
-        print('Took %g s to compute %i points'%(temps, npts))
-        print('%g ms/1000pt'%(temps/npts*1e6))
-        print('#'*35)
+        if verbose:
+            print('#'*35)
+            print('Took %g s to compute %i points'%(temps, npts))
+            print('%g ms/pt'%(temps/npts*1e3))
+            print('#'*35)
         self.kw = {"w": w, "k": k, "det": Z, "K": K, "W": W}
 
 
-    def computeWCmap(self, w, c, adim=True):
+    def computeWCmap(self, w, c, adim=True, verbose=True):
         """Compute the value of the characteristic equation on a (w,c) grid
 
         :param array w: circular frequency
         :param array c: velocity
         :param bool adim: True if the given input arguments are dimensionless
+        :param bool verbose: print progress and computation time
         """
         if adim:
             C = c
@@ -136,22 +150,68 @@ class DetDispEquation:
                 Z[:, ii] = self.detfun(kk, om)
         else:
             for ii, om in enumerate(w):
-                print('%i/%i'%(ii,len(w)))
+                if ii%10==0 and verbose:
+                    print('%i/%i'%(ii,len(w)))
                 for jj, kk in enumerate(om / c):
                     Z[jj, ii] = self.detfun(kk, om)
         
         end = time.clock()
         temps = end - start
         npts = len(w)*len(c)
-        print('#'*35)
-        print('Took %g s to compute %i points'%(temps, npts))
-        print('%g ms/1000pt'%(temps/npts*1e6))
-        print('#'*35)
+        if verbose:
+            print('#'*35)
+            print('Took %g s to compute %i points'%(temps, npts))
+            print('%g ms/pt'%(temps/npts*1e3))
+            print('#'*35)
         self.wc = {"w": w, "c": c, "det": Z, "C": C, "W": W}
 
 
+    def computeKCmap(self, k, c, adim=True, verbose=True):
+        """Compute the value of the characteristic equation on a (k,c) grid
+
+        :param array k: wavenumbers
+        :param array c: velocity
+        :param bool adim: True if the given input arguments are dimensionless
+        :param bool verbose: print progress and computation time
+        """
+        if adim:
+            K = k
+            C = c
+            c = c*self.dim['c']
+            k = k/self.dim['l']
+        else: 
+            K = k*self.dim['l']
+            C = c/self.dim['c']
+        Z = np.empty((len(c), len(k)), dtype=np.complex128)
+        start = time.clock()
+        
+        if self.vectorized:
+            for ii, kk in enumerate(k):
+                om = kk*c
+                Z[:,ii] = self.detfun(kk, om)
+            print('not sure')
+        else:
+            for ii, cc in enumerate(c):
+                if ii%10==0 and verbose:
+                    print('%i/%i'%(ii,len(c)))
+                for jj, kk in enumerate(k):
+                    om = kk*cc
+                    Z[ii, jj] = self.detfun(kk, om)
+                
+        end = time.clock()
+        temps = end - start
+        npts = len(k)*len(c)
+        if verbose:
+            print('#'*35)
+            print('Took %g s to compute %i points'%(temps, npts))
+            print('%g ms/pt'%(temps/npts*1e3))
+            print('#'*35)
+
+        self.kc = {"c": c, "k": k, "det": Z, "K": K, "C": C}
+
+
     def plotDet(self, xy="WC", typep="contour", nature="imag", level=[0],
-                figname=None, colors=None):
+                figname=None, title=None, colors=None):
         """Plot value of characteristic function on a grid
 
         :param str xy: name of the grid ('WC', or 'KW')
@@ -159,52 +219,61 @@ class DetDispEquation:
         :param str nature:  ('real', 'imag', or 'abs')
         :param list level: level(s) for the contour plot
         :param str figname: name for the figure
+        :param str title: plot title
         :param coul color: color for the contour plot
         """
-        if xy == "WC":
+        if xy=="WC":
             x = self.wc["W"]
             y = self.wc["C"]
             det = self.wc["det"]
             xlabel = "$\\Omega=\\omega %s/%s$[-]"%(self.dimlab['l'], self.dimlab['c'])
             ylabel = "$C=c/%s [-]$"%self.dimlab['c']
-
-
-        elif xy == "KW":
+        elif xy=="KW":
             x = self.kw["K"]
             y = self.kw["W"]
             det = self.kw["det"]
-            xlabel = "K[-]"
+            xlabel = "K [-]"
             ylabel = "$\\Omega = \\omega %s/%s [-]$"%(self.dimlab['l'], self.dimlab['c'])
+        elif xy=='KC':
+            x = self.kc['K']
+            y = self.kc['C']
+            det = self.kc['det']
+            xlabel = 'K [-]'
+            ylabel = 'C [-]'
+        
+        if nature=='auto':
+            nature = self._nature
+            
 
         plt.figure(figname)
-        if typep == "contour":
-            if nature == "real":
+        if typep=="contour":
+            if nature=="real":
                 data = det.real
-            elif nature == "imag":
+            elif nature=="imag":
                 data = det.imag
-            elif nature == "abs":
+            elif nature=="abs":
                 data = abs(det)
 
             CS = plt.contour(x, y, data, level, 
                              colors=colors, linewidths=1)
             # CL = plt.clabel(CS, fmt='%g')
 
-        elif typep == "sign":
-            if nature == "real":
+        elif typep=="sign":
+            if nature=="real":
                 data = np.sign(det.real)
-            elif nature == "imag":
+            elif nature=="imag":
                 data = np.sign(det.imag)
             else:
                 return  # essaie de tracer qd même
 
             plt.pcolormesh(x, y, data, shading="auto", cmap="cool")
 
-        elif typep == "log":
-            if nature == "real":
+        elif typep=="log":
+            if nature=="real":
                 data = np.log10(det.real)
-            elif nature == "imag":
+            elif nature=="imag":
                 data = np.log10(det.imag)
-            elif nature == "abs":
+            elif nature=="abs":
                 data = np.log10(det)
 
             plt.pcolormesh(x, y, data, shading="auto", cmap="cool")
@@ -212,11 +281,18 @@ class DetDispEquation:
 
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
-        plt.title(typep + "(" + nature + "(det))")
-        plt.ylim(ymin=0)
+        if title is not None:
+            plt.title(title)
+        else:
+            plt.title(typep + "(" + nature + "(det))")
+        #plt.title("%s(%s(det)), N=%i, e=%g"%(typep, nature, self.geo['N'], self.geo['e']))
+        #plt.ylim(ymin=0)
         
         if typep=='contour':
             return CS
+        else:
+            plt.xlim((x.min(), x.max()))
+            plt.ylim((y.min(), y.max()))
 
 
     def plotDet_KC(self, xy="KC", typep="contour", nature="imag", level=[0], 
@@ -254,11 +330,11 @@ class DetDispEquation:
             
         
         plt.figure(figname)
-        if typep == "contour":
+        if typep=="contour":
             # level = [0]
-            if nature == "real":
+            if nature=="real":
                 data = det.real
-            elif nature == "imag":
+            elif nature=="imag":
                 data = det.imag
             elif nature=='abs':
                 data = abs(det)
@@ -266,10 +342,10 @@ class DetDispEquation:
                 data = abs(det.real)/abs(det.imag)
             CS = plt.contour(x, y, data, level, colors=colors, linewidths=lw)
             # CL = plt.clabel(CS, fmt='%g')
-        elif typep == "sign":
-            if nature == "real":
+        elif typep=="sign":
+            if nature=="real":
                 data = np.sign(det.real)
-            elif nature == "imag":
+            elif nature=="imag":
                 data = np.sign(det.imag)
             plt.pcolormesh(x, y, data, shading="auto", cmap="cool", rasterized=True)
             # plt.colorbar()
@@ -565,30 +641,38 @@ def prediction(WW, XI, wp, c_, extrap, verbose, speedPred=True):
 
     return xio
 
-if __name__ == "__main__":
+if __name__=="__main__":
     plt.close("all")
     
     # %% TEST CLASS
     Det = DetDispEquation()
+    
+    # WC map
     if False:
-        Det.computeWCmap(
-            np.linspace(0.0001, 1245298.85199065, 500),
-            np.linspace(0.5 * Det.c["co"], 4 * Det.c["co"], 200),
-            adim=False,
-        )
+        Det.computeWCmap(w=np.linspace(0.0001, 1245298.85199065, 500),
+                         c=np.linspace(0.5 * Det.c["co"], 4 * Det.c["co"], 200),
+                         adim=False)
         for typep in ("contour", "sign", "log"):
-            for nature in ("real", "imag", "abs"):
+            for nature in ("real", "imag", "abs", 'auto'):
                     Det.plotDet(xy="WC", typep=typep, nature=nature, colors='g')
+    
+    # KW map
     if False:
-        Det.computeKWmap(
-            np.linspace(0, 200, 300, dtype=np.complex128),
-            np.linspace(0, 1e6, 500),
-            adim=False,
-        )
+        Det.computeKWmap(k=np.linspace(0, 200, 300, dtype=np.complex128),
+                         w=np.linspace(0, 1e6, 500),
+                         adim=False)
         for typep in ("contour", "sign", "log"):
-            for nature in ("real", "imag", "abs"):
+            for nature in ("real", "imag", "abs", 'auto'):
                     Det.plotDet(xy="KW", typep=typep, nature=nature, colors='g')
-        
+    
+    # KC map
+    if True:
+        Det.computeKCmap(k=np.linspace(0, 200, 300, dtype=np.complex128),
+                         c=np.linspace(0.5 * Det.c["co"], 4 * Det.c["co"], 200),
+                         adim=False)
+        for typep in ("contour", "sign", "log"):
+            for nature in ("real", "imag", "abs", 'auto'):
+                    Det.plotDet(xy="KC", typep=typep, nature=nature, colors='g')        
 
     # %% Test follow Branch
     if True:

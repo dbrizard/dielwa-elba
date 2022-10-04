@@ -1,4 +1,6 @@
 dbin/
+convergence/
+maps/
 *.o
 # Byte-compiled / optimized / DLL files
 __pycache__/
