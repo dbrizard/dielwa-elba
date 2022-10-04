@@ -203,12 +203,12 @@ class DispElliptic(round_bar.DetDispEquation):
         
         """
         if self.mode in ('L', 'T'):
-            if N%2==1:
+            if self.geo['N']%2==1:
                 if self.mode in ('L'):
                     nat = 'imag'
                 elif self.mode in ('T'):
                     nat = 'real'
-            elif N%2==0:
+            elif self.geo['N']%2==0:
                 if self.mode in ('L'):
                     nat = 'real'
                 elif self.mode in ('T'):
@@ -235,6 +235,13 @@ class DispElliptic(round_bar.DetDispEquation):
         y_g = self.ellipse['R']*np.sin(self.ellipse['theta']+self.ellipse['gamma'])
         for ii in range(self.geo['N']):
             plt.quiver(0, 0, x_g[ii], y_g[ii], scale=0.09, color='r')
+        
+
+    def computeABCDEF(self):
+        """
+        
+        """
+        
      
 
         
@@ -242,11 +249,12 @@ if __name__ == "__main__":
     plt.close("all")
     
     # %% Numerical solving: FOLLOW FIRST BRANCH
-    if True:
+    if False:
         e = 0.8
         N = 4
+        modes = ('L', 'T', 'Bx', 'By')
         # mode = 'By'
-        for mode in ('L', 'T', 'Bx', 'By'):
+        for mode in modes:
             Det = DispElliptic(e=e, N=N, mode=mode)
             omega = np.linspace(0, 8e5, 500)  # Ok pour k<1.208
             # omega = np.linspace(0, 1e6, 4000)  # trying very small step. Ok pour k<1.2182
@@ -310,28 +318,6 @@ if __name__ == "__main__":
     if False:
         e=0
         
-    #%% Etude parité N
-    if False:
-        e = 0.7
-        N = [4, 6, 8, 10, 12]
-        # N = [3, 5, 7, 9, 13]
-        coul = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple']
-        DET = []
-        # Calcul
-        for nn in N:
-            Det = DispElliptic(e=e, N=nn)
-            k =  np.linspace(0.0001, 5/Det.geo["b"], 150)
-            c = np.linspace(0.7*Det.c["c_2"], 1.7*Det.c["c_2"], 100)
-            Det.computeKCmap(k, c, adim = False)
-            DET.append(Det)
-            
-        # Affichage
-        for nn, cc, Det in zip(N, coul, DET):
-            Det.plotDet_KC(figname='cont_imag', colors=cc)
-            Det.plotDet_KC(typep="contour", nature='real', figname="cont_real", colors=cc)
-            Det.plotDet_KC(typep="sign", nature='real', figname="sign_real")
-            Det.plotDet_KC(typep="sign", figname="sign_imag")
-            
 
     #%% Compute maps for all 4 modes
     if False:
@@ -364,31 +350,7 @@ if __name__ == "__main__":
             # gather pdf figures with pdfjam: 
             # pdfjam modeT/*.pdf --nup 2x5 --outfile mapsT.pdf
         
-    #%% KC
 
-    if False:
-        e = 0.4
-        N = 7
-        Det = DispElliptic(e=e, N=N, fortran=True)
-        Det.plot_ellipse()
-        FR = el.Fraser()
-        FR.plot(e=[e], figname='cont_imag')
-        FR.plot(e=[e], figname='cont_imag', branch=1)
-        FR.plot(e=[e], figname='cont_real')
-        FR.plot(e=[e], figname='cont_real', branch=1)
-         
-        FR.plot(e=[e], figname='sign_imag')
-        FR.plot(e=[e], figname='sign_imag', branch=1)
-        FR.plot(e=[e], figname='sign_real')
-        FR.plot(e=[e], figname='sign_real', branch=1)
-        
-        k =  np.linspace(0.0001, 5/Det.geo["b"], 150)
-        c = np.linspace(0.7*Det.c["c_2"], 2.*Det.c["c_2"], 100)
-        Det.computeKCmap(k, c, adim = False)
-        Det.plotDet_KC(figname='cont_imag')
-        Det.plotDet_KC(typep="contour", nature='real', figname="cont_real")
-        Det.plotDet_KC(typep="sign", nature='real', figname="sign_real")
-        Det.plotDet_KC(typep="sign", figname="sign_imag")
 
     #%% Domaine KW
     if False:
@@ -397,25 +359,15 @@ if __name__ == "__main__":
         Det = DispElliptic(e=0.7, N=7)
         Det.plot_ellipse()
         FR = el.Fraser()
-        k =  np.linspace(0.0001, 5/Det.geo["b"], 150)   
+        k = np.linspace(0.0001, 5/Det.geo["b"], 150)   
         w = np.linspace(0.1, 5e5, 100)
         Det.computeKWmap(k, w, adim=False)
-        Det.plotDet( xy="KW", typep="contour", nature="imag", figname='cont_imag')
-        Det.plotDet( xy="KW", typep="contour", nature="real", figname='cont_real')
-        Det.plotDet( xy="KW", typep="sign", nature="imag", figname="sign_imag")
-        Det.plotDet( xy="KW", typep="sign", nature="real", figname="sign_real")
-        
-        FR.plot(y='W', figname='cont_imag', e=[e])
-        FR.plot(y='W', figname='cont_imag', branch=1, e=[e])
-        
-        FR.plot(y='W', figname='cont_real', e=[e])
-        FR.plot(y='W', figname='cont_real', branch=1, e=[e])
-        
-        FR.plot(y='W', figname='sign_imag', e=[e])
-        FR.plot(y='W', figname='sign_imag', branch=1, e=[e])
-        
-        FR.plot(y='W', figname='sign_real', e=[e])
-        FR.plot(y='W', figname='sign_real', branch=1, e=[e])
+
+        Det.plotDet(xy="KW", typep="sign", nature="imag", figname="sign_imag")
+        FR.plot(x='K', y='W', figname='sign_imag', e=[e])
+        FR.plot(x='K', y='W', figname='sign_imag', branch='L2', e=[e])
+        # XXX curves do not overlay... !
+
         
     # %% Convergence --Résolution numérique
     if False:
@@ -498,3 +450,10 @@ if __name__ == "__main__":
                 
         
         fu.savefigs(path='convergence', overw=False)
+    
+    #%% Compute residual stress between collocation points
+    if True:
+        Det = DispElliptic(e=0.5, N=4, mode='L')
+        omega = np.linspace(0, 8e5, 500) 
+        Det.followBranch0(omega, itermax=20, jumpC2=0.004, interp='cubic')
+        Det.plotFollow()
