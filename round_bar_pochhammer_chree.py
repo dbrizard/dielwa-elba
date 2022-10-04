@@ -447,7 +447,7 @@ class DetDispEquation:
         Returns either "x, y" or "x, xlab, y, ylab"
        
         :param str x: x variable ('w', 'W', 'k', '-')
-        :param str y: y variable ('c', 'C')
+        :param str y: y variable ('c', 'C', 'w', 'W')
         :param bool label: also return the corresponding labels
         """
         if x=='w':
@@ -470,7 +470,12 @@ class DetDispEquation:
         elif y=='C':
             ylab = '$c/%s$ [-]'%self.dimlab['c']
             y = self.b0['c']/self.dim['c']
-            
+        elif y=='w':
+            ylab = '$\\omega$ [rad/s]'
+            y = self.b0['w']
+        elif y=='W':
+            ylab= '$\\Omega=\\omega %s/%s$ [-]'%(self.dimlab["l"], self.dimlab["c"])
+            y = self.b0['w']*self.dim['l']/self.dim["c"]            
         
         if label:
             return x, xlab, y, ylab

@@ -16,6 +16,7 @@ Created on Fri Sep  2 13:03:37 2022
 import numpy as np
 from scipy.special import jv   #Bessel function (v,z) = (order,arg)
 from scipy.optimize import root_scalar
+from scipy.linalg import null_space
 import matplotlib.pyplot as plt
 
 import warnings
@@ -28,7 +29,8 @@ import fraser_matrix
 
 import figutils as fu
 
-def char_func_elliptic_fortran(k, w, R, N, theta, gamma, c_1, c_2, mode='L'):
+def char_func_elliptic_fortran(k, w, R, N, theta, gamma, c_1, c_2, mode='L',
+                               rEturn='det'):
     """Characteristic function for elliptical bar, with underlying Fortran code
     
     :param float k: wavenumber
@@ -39,19 +41,27 @@ def char_func_elliptic_fortran(k, w, R, N, theta, gamma, c_1, c_2, mode='L'):
     :param array gamma: angle of normal at collocation points
     :param float c_1: velocity
     :param float c_2: velocity
-    :param str mode: wave propagation mode ('L' or 'T')
+    :param str mode: wave propagation mode ('L', 'T', 'Bx', 'By')
+    :param str rEturn: 'det' or 'matrix'
     """
     A = fraser_matrix.mat(k, w, R, N, gamma, theta, c_1, c_2, mode)
     if mode=='L':
-        detA = np.linalg.det(A[1:, 1:])
+        B = A[1:, 1:]
+        detA = np.linalg.det(B)
     elif mode=='T':
         ind = list(range(3*N))
         ind.remove(N)   # XXX reason why indices N and 2*N ?
         ind.remove(2*N) # ditto
-        detA = np.linalg.det(A[np.ix_(ind,ind)])
+        B = A[np.ix_(ind,ind)]
+        detA = np.linalg.det(B)
     elif mode in ('Bx', 'By'):
+        B = A
         detA = np.linalg.det(A)
-    return detA
+    
+    if rEturn=='det':
+        return detA
+    elif rEturn=='matrix':
+        return B
 
 
 
@@ -155,11 +165,11 @@ class DispElliptic(round_bar.DetDispEquation):
         la = E * nu / ((1 + nu) * (1 - 2 * nu))  # coef de Lamé
         c_2 = np.sqrt(mu/rho) 
         # c_1 = np.sqrt((la+2*mu)/rho)
-        c_1 = c_2*np.sqrt(2*(1-nu)/(1-2*nu)) #Fraser eq(7)
+        c_1 = c_2*np.sqrt(2*(1-nu)/(1-2*nu))  # Fraser eq(7)
         self.mat = {'E':E, 'rho':rho, 'nu':nu, 'mu':mu, 'la':la}
 
         self.c = {'c_2':c_2, 'c_1':c_1, 'co': np.sqrt(E/rho)}
-        b = a*np.sqrt(1-e**2) #Fraser eq(4) 
+        b = a*np.sqrt(1-e**2)  # Fraser eq(4) 
         self.a = a #b
         self.geo = {'e': e, 'b': b, 'N': N,'a':a}
         
@@ -171,8 +181,8 @@ class DispElliptic(round_bar.DetDispEquation):
             theta = (m-0.5)*np.pi/2/N
         e2 = e**2
         cos__2 = np.cos(theta)**2
-        gamma = -np.arctan((e2*np.sin(2*theta))/(2*(1-e2*cos__2))) #Frser eq(6)
-        R = b*np.sqrt(1/(1 - e2*cos__2)) #Frser eq(5)
+        gamma = -np.arctan((e2*np.sin(2*theta))/(2*(1-e2*cos__2)))  # Fraser eq(6)
+        R = b*np.sqrt(1/(1 - e2*cos__2))  # Frser eq(5)
         self.ellipse = {'R':R, 'gamma':gamma, 'theta':theta}
         
         # Characteristic function
@@ -183,7 +193,7 @@ class DispElliptic(round_bar.DetDispEquation):
             def detfun(k, w):
                 """Characteristic determinant function."""
                 return char_func_elliptic_fortran(k, w, R, N, theta, gamma, 
-                                                  c_1, c_2, mode=mode)
+                                                  c_1, c_2, mode=mode, rEturn='det')
         else:
             def detfun(k, w):
                 """Characteristic determinant function."""
@@ -195,6 +205,14 @@ class DispElliptic(round_bar.DetDispEquation):
         self.mode = mode
         
         self._nature = self._defineAutoReIm4map()
+        
+        # Also define some other useful functions
+        if fortran:
+            def matrix(k, w):
+                """Characteristic matrix"""
+                return char_func_elliptic_fortran(k, w, R, N, theta, gamma, 
+                                                  c_1, c_2, mode=mode, rEturn='matrix')
+            self._matrix_fun = matrix
         
         
     def _defineAutoReIm4map(self):
@@ -237,12 +255,31 @@ class DispElliptic(round_bar.DetDispEquation):
             plt.quiver(0, 0, x_g[ii], y_g[ii], scale=0.09, color='r')
         
 
-    def computeABCDEF(self):
+    def computeABCDEF(self, ind, rcond=1e-9):
         """
         
         """
+        k, w = self.getBranch0(x='k', y='w')
+        A = self._matrix_fun(k[ind], w[ind])
         
-     
+        Z = null_space(A, rcond=rcond)
+        print('Is this OK?')
+        self.temp = {'A':A, 'Z':Z}
+        
+        temp = A*Z[:,-1]  # last vector should be the right one
+        
+        N = self.geo['N']
+        if self.mode in ('L'):
+            tau_t = temp[0:N-1, :]
+            sig_n = temp[N:2*N, :]
+            tau_z = temp[2*N:, :]
+        
+        residue = {'tau_t': tau_t.sum(axis=1), 
+                   'tau_z': tau_z.sum(axis=1), 
+                   'sig_n': sig_n.sum(axis=1)}
+        
+        self.residue = residue
+
 
         
 if __name__ == "__main__":
@@ -457,3 +494,6 @@ if __name__ == "__main__":
         omega = np.linspace(0, 8e5, 500) 
         Det.followBranch0(omega, itermax=20, jumpC2=0.004, interp='cubic')
         Det.plotFollow()
+        Det.computeABCDEF(10)
+        
+        
