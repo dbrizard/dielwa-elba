@@ -173,17 +173,27 @@ class DispElliptic(round_bar.DetDispEquation):
         self.a = a #b
         self.geo = {'e': e, 'b': b, 'N': N,'a':a}
         
-        # Collocation points coordinates
+        # Collocation points coordinates and midway angles
         m = np.arange(1, N+1)
         if mode in ('L', 'T'):
             theta = (m-1)*np.pi/2/N
+            theta_mid = (m-0.5)*np.pi/2/N
         elif mode in ('Bx', 'By'):
             theta = (m-0.5)*np.pi/2/N
+            theta_mid = m*np.pi/2/N
+            
         e2 = e**2
-        cos__2 = np.cos(theta)**2
-        gamma = -np.arctan((e2*np.sin(2*theta))/(2*(1-e2*cos__2)))  # Fraser eq(6)
-        R = b*np.sqrt(1/(1 - e2*cos__2))  # Frser eq(5)
-        self.ellipse = {'R':R, 'gamma':gamma, 'theta':theta}
+        
+        def compute_gamma_R(theta, b=b):
+            cos2 = np.cos(theta)**2
+            gamma = -np.arctan((e2*np.sin(2*theta))/(2*(1-e2*cos2)))  # Fraser eq(6)
+            R = b*np.sqrt(1/(1 - e2*cos2))  # Frser eq(5)
+            return gamma, R
+        
+        gamma, R = compute_gamma_R(theta)
+        self.ellipse = {'theta':theta, 'gamma':gamma, 'R':R}
+        gamid, Rmid = compute_gamma_R(theta_mid)
+        self.midpoints = {'theta':theta_mid, 'gamma':gamid, 'R':Rmid}
         
         # Characteristic function
         if mode in ('T', 'Bx', 'By') and fortran is False:
@@ -209,11 +219,17 @@ class DispElliptic(round_bar.DetDispEquation):
         # Also define some other useful functions
         if fortran:
             def matrix(k, w):
-                """Characteristic matrix"""
-                return char_func_elliptic_fortran(k, w, R, N, theta, gamma, 
+                """Characteristic matrix, on collocation points"""
+                return char_func_elliptic_fortran(k, w, R, theta, gamma, 
                                                   c_1, c_2, mode=mode, rEturn='matrix')
-            self._matrix_fun = matrix
-        
+            def matrix2(k, w, theta, b):
+                """Characteristic matrix, for other points"""
+                gamma, R = compute_gamma_R(theta, b)
+                return char_func_elliptic_fortran(k, w, R, theta, gamma, 
+                                                  c_1, c_2, mode=mode, rEturn='matrix')
+            self._matrix = matrix
+            self._matrix2 = matrix2
+            
         
     def _defineAutoReIm4map(self):
         """Define if Re or Im part of characteristic equation should used for
@@ -255,38 +271,51 @@ class DispElliptic(round_bar.DetDispEquation):
             plt.quiver(0, 0, x_g[ii], y_g[ii], scale=0.09, color='r')
         
 
-    def computeABCDEF(self, ind, rcond=1e-9):
+    def computeABCDEF(self, ind, rcond=1e-9, plot=True):
         """
         
         """
         k, w = self.getBranch0(x='k', y='w')
-        A = self._matrix_fun(k[ind], w[ind])
         
-        Z = null_space(A, rcond=rcond)
-        print('Is this OK?')
-        self.temp = {'A':A, 'Z':Z}
+        Acolp = self._matrix(k[ind], w[ind])
+        Amidp = self._matrix2(k[ind], w[ind], self.midpoints['theta'], self.geo['b'])
+         
+        RES = []
+        for ii, AA in enumerate((Acolp, Amidp)):
+            Z = null_space(AA, rcond=rcond)
+            temp = AA*Z[:,-1]  # last vector should be the right one
+            
+            N = self.geo['N']
+            if self.mode in ('L'):
+                tau_t = temp[0:N-1, :]
+                sig_n = temp[N:2*N, :]
+                tau_z = temp[2*N:, :]
+            
+            residue = {'tau_t': tau_t.sum(axis=1), 
+                       'tau_z': tau_z.sum(axis=1), 
+                       'sig_n': sig_n.sum(axis=1)}
+            RES.append(residue)
         
-        temp = A*Z[:,-1]  # last vector should be the right one
+        self.residue = RES
         
-        N = self.geo['N']
-        if self.mode in ('L'):
-            tau_t = temp[0:N-1, :]
-            sig_n = temp[N:2*N, :]
-            tau_z = temp[2*N:, :]
-        
-        residue = {'tau_t': tau_t.sum(axis=1), 
-                   'tau_z': tau_z.sum(axis=1), 
-                   'sig_n': sig_n.sum(axis=1)}
-        
-        self.residue = residue
-
+        if plot:
+            plt.figure()
+            for res in RES:
+                for kk in res.keys():
+                    plt.figure('abs')
+                    plt.plot(abs(res[kk]), label=kk+' abs')
+                    plt.figure('real')
+                    plt.plot(np.real(res[kk]), label=kk+' real')
+                    plt.figure('imag')
+                    plt.plot(np.imag(res[kk]), label=kk+' imag')
+            plt.legend()
 
         
 if __name__ == "__main__":
     plt.close("all")
     
     # %% Numerical solving: FOLLOW FIRST BRANCH
-    if True:
+    if False:
         e = 0.8
         N = 4
         modes = ('L', 'T', 'Bx', 'By')
@@ -489,7 +518,7 @@ if __name__ == "__main__":
         fu.savefigs(path='convergence', overw=False)
     
     #%% Compute residual stress between collocation points
-    if False:
+    if True:
         Det = DispElliptic(e=0.5, N=4, mode='L')
         omega = np.linspace(0, 8e5, 500) 
         Det.followBranch0(omega, itermax=20, jumpC2=0.004, interp='cubic')
