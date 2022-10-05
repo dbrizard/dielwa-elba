@@ -61,7 +61,7 @@ def char_func_elliptic_fortran(k, w, R, theta, gamma, c_1, c_2, mode='L',
     if rEturn=='det':
         return detA
     elif rEturn=='matrix':
-        return B
+        return A, B
 
 
 
@@ -277,17 +277,17 @@ class DispElliptic(round_bar.DetDispEquation):
         """
         k, w = self.getBranch0(x='k', y='w')
         
-        Acolp = self._matrix(k[ind], w[ind])
-        Amidp = self._matrix2(k[ind], w[ind], self.midpoints['theta'], self.geo['b'])
+        Acp, Bcp = self._matrix(k[ind], w[ind])  # collocation points
+        Amp, Bmp = self._matrix2(k[ind], w[ind], self.midpoints['theta'], self.geo['b'])
          
         RES = []
-        for ii, AA in enumerate((Acolp, Amidp)):
+        for ii, AA in enumerate((Acp, Amp)):
             Z = null_space(AA, rcond=rcond)
-            temp = AA*Z[:,-1]  # last vector should be the right one
+            temp = AA*Z[:,-2]  # last vector should be the right one
             
             N = self.geo['N']
             if self.mode in ('L'):
-                tau_t = temp[0:N-1, :]
+                tau_t = temp[:N, :]
                 sig_n = temp[N:2*N, :]
                 tau_z = temp[2*N:, :]
             
@@ -297,18 +297,27 @@ class DispElliptic(round_bar.DetDispEquation):
             RES.append(residue)
         
         self.residue = RES
+        labels = {'tau_t':'$\\tau_t$', 'tau_z':'$\\tau_z$', 'sig_n':'$\\sigma_n$'}
+        colors = {'tau_t':'C1', 'tau_z':'C2', 'sig_n':'C0'}
         
         if plot:
-            plt.figure()
-            for res in RES:
-                for kk in res.keys():
+            LS = ('+-', '.-')
+            THETA = (self.ellipse['theta'], self.midpoints['theta'])
+            for ls, res, theta in zip(LS, RES, THETA):
+                for kk in ('sig_n', 'tau_t', 'tau_z'):
                     plt.figure('abs')
-                    plt.plot(abs(res[kk]), label=kk+' abs')
+                    plt.plot(theta, abs(res[kk]), ls, color=colors[kk], label=labels[kk])
                     plt.figure('real')
-                    plt.plot(np.real(res[kk]), label=kk+' real')
+                    plt.plot(theta, np.real(res[kk]), ls, color=colors[kk], label=labels[kk])
                     plt.figure('imag')
-                    plt.plot(np.imag(res[kk]), label=kk+' imag')
-            plt.legend()
+                    plt.plot(theta, np.imag(res[kk]), ls, color=colors[kk], label=labels[kk])
+
+            ticks = np.arange(0, 5, 1)*np.pi/8
+            tickslabels = ['0', '$\\pi/8$', '$\\pi/4$', '$3\\pi/8$', '$\\pi/2$']
+            for fig in ('abs', 'real', 'imag'):
+                plt.figure(fig)
+                plt.legend(title=fig)
+                plt.xticks(ticks, tickslabels)
 
         
 if __name__ == "__main__":
@@ -519,7 +528,7 @@ if __name__ == "__main__":
     
     #%% Compute residual stress between collocation points
     if True:
-        Det = DispElliptic(e=0.5, N=4, mode='L')
+        Det = DispElliptic(e=0.5, N=6, mode='L')
         omega = np.linspace(0, 8e5, 500) 
         Det.followBranch0(omega, itermax=20, jumpC2=0.004, interp='cubic')
         Det.plotFollow()
