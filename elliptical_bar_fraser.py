@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
+"""Compute the dispersion curves of elliptical bars using the collocation method
+presented by Fraser in:
+
 Fraser, W. B. (1969). Dispersion of elastic waves in elliptical bars. 
 *Journal of Sound and Vibration*, 10(2), 247‑260. 
 https://doi.org/10.1016/0022-460X(69)90199-0
+
+Some details can also be found in:
+
+Fraser, W. B. (1969). Stress wave propagation in rectangular bars. 
+*International Journal of Solids and Structures*, 5(4), 379‑397. 
+https://doi.org/10.1016/0020-7683(69)90020-1
 
 
 
@@ -280,48 +288,47 @@ class DispElliptic(round_bar.DetDispEquation):
         Acp, Bcp = self._matrix(k[ind], w[ind])  # collocation points
         Amp, Bmp = self._matrix2(k[ind], w[ind], self.midpoints['theta'], self.geo['b'])
         Aro, Bro = self._matrix2(k[ind], w[ind], self.midpoints['theta'], 0)  # center point
-         
-        RES = []
-        ZZ = []
-        for ii, AA in enumerate((Aro, Acp, Amp)):
-            Z = null_space(AA, rcond=rcond)
-            temp = AA*Z[:,-2]  # last vector should be the right one
-            
-            N = self.geo['N']
-            if self.mode in ('L'):
-                tau_t = temp[:N, :]
-                sig_n = temp[N:2*N, :]
-                tau_z = temp[2*N:, :]
-            
-            if ii==0:
-                # these are the reference values at center point of section
-                residue = {'tau_t': tau_t.sum(axis=1), 
-                           'tau_z': tau_z.sum(axis=1), 
-                           'sig_n': sig_n.sum(axis=1)}
-            else:
-                # normalize wrt center point
-                residue = {'tau_t': tau_t.sum(axis=1)/RES[0]['tau_t'], 
-                           'tau_z': tau_z.sum(axis=1)/RES[0]['tau_z'], 
-                           'sig_n': sig_n.sum(axis=1)/RES[0]['sig_n']}
-                
-            RES.append(residue)
-            ZZ.append(Z)
         
-        self.residue = RES
-        labels = {'tau_t':'$\\tau_t$', 'tau_z':'$\\tau_z$', 'sig_n':'$\\sigma_n$'}
-        colors = {'tau_t':'C1', 'tau_z':'C2', 'sig_n':'C0'}
+        # Determine solution vector for coefficients An, Bn, Cn for given (k, w)
+        Z = null_space(Acp, rcond=rcond)
+        ABC = Z[:,-2]  # vector of coefficients An, Bn, Cn (or Dn, En, Fn)
+        
+        N = self.geo['N']
+        def computeStress(A, ABC):
+            """Compute stresses from characteristic matrix and coefficients vector
+            
+            :param array A: characteristic matrix, for N given values of (R, theta) and given (k, w)
+            :param array ABC: solution vector of coefficients An, Bn, Cn for given (k, w)
+            """
+            temp = A*ABC  # before last vector should be the right one
+            tau_t = temp[:N, :]
+            sig_n = temp[N:2*N, :]
+            tau_z = temp[2*N:, :]
+            
+            return sig_n.sum(axis=1), tau_t.sum(axis=1), tau_z.sum(axis=1)
+
+        # Now compute stresses 
+        st_cp = computeStress(Acp, ABC)  # at collocation points
+        st_mp = computeStress(Amp, ABC)  # at midpoints
+        #st_ro = computeStress(Aro, ABC)  # at center point  WRONG!
+        
+        # Normalize each component wrt value at center point
+        # => requires equation 2 on Fraser's paper on rectangular bars
+
+        labels = ('$\\sigma_n$', '$\\tau_t$', '$\\tau_z$')
+        colors = ('C0', 'C1', 'C2')
         
         if plot:
             LS = ('+--', '.-')
             THETA = (self.ellipse['theta'], self.midpoints['theta'])
-            for ls, res, theta in zip(LS, RES[1:], THETA):
-                for kk in ('sig_n', 'tau_t', 'tau_z'):
+            for ls, st, theta in zip(LS, (st_cp, st_mp), THETA):
+                for ii, sstt in enumerate(st):
                     plt.figure('abs')
-                    plt.plot(theta, abs(res[kk]), ls, color=colors[kk], label=labels[kk])
+                    plt.plot(theta, abs(sstt), ls, color=colors[ii], label=labels[ii])
                     plt.figure('REAL')
-                    plt.plot(theta, np.real(res[kk]), ls, color=colors[kk], label=labels[kk])
+                    plt.plot(theta, np.real(sstt), ls, color=colors[ii], label=labels[ii])
                     plt.figure('imag')
-                    plt.plot(theta, np.imag(res[kk]), ls, color=colors[kk], label=labels[kk])
+                    plt.plot(theta, np.imag(sstt), ls, color=colors[ii], label=labels[ii])
 
             ticks = np.arange(0, 5, 1)*np.pi/8
             tickslabels = ['0', '$\\pi/8$', '$\\pi/4$', '$3\\pi/8$', '$\\pi/2$']
