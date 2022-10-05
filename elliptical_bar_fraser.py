@@ -279,9 +279,11 @@ class DispElliptic(round_bar.DetDispEquation):
         
         Acp, Bcp = self._matrix(k[ind], w[ind])  # collocation points
         Amp, Bmp = self._matrix2(k[ind], w[ind], self.midpoints['theta'], self.geo['b'])
+        Aro, Bro = self._matrix2(k[ind], w[ind], self.midpoints['theta'], 0)  # center point
          
         RES = []
-        for ii, AA in enumerate((Acp, Amp)):
+        ZZ = []
+        for ii, AA in enumerate((Aro, Acp, Amp)):
             Z = null_space(AA, rcond=rcond)
             temp = AA*Z[:,-2]  # last vector should be the right one
             
@@ -291,30 +293,39 @@ class DispElliptic(round_bar.DetDispEquation):
                 sig_n = temp[N:2*N, :]
                 tau_z = temp[2*N:, :]
             
-            residue = {'tau_t': tau_t.sum(axis=1), 
-                       'tau_z': tau_z.sum(axis=1), 
-                       'sig_n': sig_n.sum(axis=1)}
+            if ii==0:
+                # these are the reference values at center point of section
+                residue = {'tau_t': tau_t.sum(axis=1), 
+                           'tau_z': tau_z.sum(axis=1), 
+                           'sig_n': sig_n.sum(axis=1)}
+            else:
+                # normalize wrt center point
+                residue = {'tau_t': tau_t.sum(axis=1)/RES[0]['tau_t'], 
+                           'tau_z': tau_z.sum(axis=1)/RES[0]['tau_z'], 
+                           'sig_n': sig_n.sum(axis=1)/RES[0]['sig_n']}
+                
             RES.append(residue)
+            ZZ.append(Z)
         
         self.residue = RES
         labels = {'tau_t':'$\\tau_t$', 'tau_z':'$\\tau_z$', 'sig_n':'$\\sigma_n$'}
         colors = {'tau_t':'C1', 'tau_z':'C2', 'sig_n':'C0'}
         
         if plot:
-            LS = ('+-', '.-')
+            LS = ('+--', '.-')
             THETA = (self.ellipse['theta'], self.midpoints['theta'])
-            for ls, res, theta in zip(LS, RES, THETA):
+            for ls, res, theta in zip(LS, RES[1:], THETA):
                 for kk in ('sig_n', 'tau_t', 'tau_z'):
                     plt.figure('abs')
                     plt.plot(theta, abs(res[kk]), ls, color=colors[kk], label=labels[kk])
-                    plt.figure('real')
+                    plt.figure('REAL')
                     plt.plot(theta, np.real(res[kk]), ls, color=colors[kk], label=labels[kk])
                     plt.figure('imag')
                     plt.plot(theta, np.imag(res[kk]), ls, color=colors[kk], label=labels[kk])
 
             ticks = np.arange(0, 5, 1)*np.pi/8
             tickslabels = ['0', '$\\pi/8$', '$\\pi/4$', '$3\\pi/8$', '$\\pi/2$']
-            for fig in ('abs', 'real', 'imag'):
+            for fig in ('abs', 'REAL', 'imag'):
                 plt.figure(fig)
                 plt.legend(title=fig)
                 plt.xticks(ticks, tickslabels)
