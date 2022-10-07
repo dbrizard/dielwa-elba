@@ -223,6 +223,7 @@ class DispElliptic(round_bar.DetDispEquation):
         self.mode = mode
         
         self._nature = self._defineAutoReIm4map()
+        self.surfaceStress = []
         
         # Also define some other useful functions
         if fortran:
@@ -279,8 +280,12 @@ class DispElliptic(round_bar.DetDispEquation):
             plt.quiver(0, 0, x_g[ii], y_g[ii], scale=0.09, color='r')
         
 
-    def computeABCDEF(self, ind, rcond=1e-9, plot=True):
-        """
+    def computeSurfaceStress(self, ind, rcond=1e-9, plot=True):
+        """Compute surface stresses at collocation points and midpoints
+        
+        :param int ind: index of (k, w) point on first branch to consider
+        :param float rcond: relative condition umber (see :func:`scipy.linalg.null_space`)
+        :param bool plot: 
         
         """
         k, w = self.getBranch0(x='k', y='w')
@@ -307,35 +312,102 @@ class DispElliptic(round_bar.DetDispEquation):
             
             return sig_n.sum(axis=1), tau_t.sum(axis=1), tau_z.sum(axis=1)
 
+
+        def interleave(aa, bb):
+            """Interleave midpoints and collocation points to get a single vector
+            
+            :param array aa: vector related to collocation points
+            :param array bb: vector related to midpoints
+            """
+            cc = np.empty((len(aa)+len(bb),), dtype=aa.dtype)
+            cc[::2] = aa
+            cc[1::2] = bb
+            return cc
+            
         # Now compute stresses 
         st_cp = computeStress(Acp, ABC)  # at collocation points
         st_mp = computeStress(Amp, ABC)  # at midpoints
-        #st_ro = computeStress(Aro, ABC)  # at center point  WRONG!
+        # st_ro = computeStress(Aro, ABC)  # at center point WRONG like this!
         
         # Normalize each component wrt value at center point
         # => requires equation 2 on Fraser's paper on rectangular bars
+        
+        self.surfaceStress0 = {'col':st_cp, 'mid':st_mp}
+        surfaceStress = {'sig_n':interleave(st_cp[0], st_mp[0]),
+                         'tau_t':interleave(st_cp[1], st_mp[1]),
+                         'tau_z':interleave(st_cp[2], st_mp[2]),
+                         'theta':interleave(self.ellipse['theta'], self.midpoints['theta']),
+                         'ind':ind}
+        self.surfaceStress.append(surfaceStress)
 
+
+    def plotSurfaceStress0(self):
+        """Plot surface stresses at collocation points and midpoints
+        
+        """
         labels = ('$\\sigma_n$', '$\\tau_t$', '$\\tau_z$')
         colors = ('C0', 'C1', 'C2')
+        ST = (self.surfaceStress0['col'], self.surfaceStress0['mid'])
         
-        if plot:
-            LS = ('+--', '.-')
-            THETA = (self.ellipse['theta'], self.midpoints['theta'])
-            for ls, st, theta in zip(LS, (st_cp, st_mp), THETA):
-                for ii, sstt in enumerate(st):
-                    plt.figure('abs')
-                    plt.plot(theta, abs(sstt), ls, color=colors[ii], label=labels[ii])
-                    plt.figure('REAL')
-                    plt.plot(theta, np.real(sstt), ls, color=colors[ii], label=labels[ii])
-                    plt.figure('imag')
-                    plt.plot(theta, np.imag(sstt), ls, color=colors[ii], label=labels[ii])
+        LS = ('+--', '.-')
+        THETA = (self.ellipse['theta'], self.midpoints['theta'])
+        for ls, st, theta in zip(LS, ST, THETA):
+            for ii, sstt in enumerate(st):
+                plt.figure('abs')
+                plt.plot(theta, abs(sstt), ls, color=colors[ii], label=labels[ii])
+                plt.figure('REAL')
+                plt.plot(theta, np.real(sstt), ls, color=colors[ii], label=labels[ii])
+                plt.figure('imag')
+                plt.plot(theta, np.imag(sstt), ls, color=colors[ii], label=labels[ii])
 
-            ticks = np.arange(0, 5, 1)*np.pi/8
-            tickslabels = ['0', '$\\pi/8$', '$\\pi/4$', '$3\\pi/8$', '$\\pi/2$']
-            for fig in ('abs', 'REAL', 'imag'):
-                plt.figure(fig)
-                plt.legend(title=fig)
+        ticks = np.arange(0, 5, 1)*np.pi/8
+        tickslabels = ['0', '$\\pi/8$', '$\\pi/4$', '$3\\pi/8$', '$\\pi/2$']
+        for fig in ('abs', 'REAL', 'imag'):
+            plt.figure(fig)
+            plt.legend(title=fig)
+            plt.xticks(ticks, tickslabels)
+
+
+    def plotSurfaceStress(self, figname=None, cmap='cool'):
+        """Plot surface stresses at collocation points and midpoints
+        
+        :param str figname: prefix for the name of the figure
+        """
+        if figname is None:
+            figname = ''
+        stress = ('sig_n', 'tau_t', 'tau_z')
+        labels = ('\\sigma_n', '\\tau_t', '\\tau_z')
+        colors = {'sig_n':'C0', 'tau_t':'C1', 'tau_z':'C2'}
+        
+        # Define colors
+        ncoul = len(self.surfaceStress)
+        cm = plt.get_cmap(cmap)
+        colors = [cm(1.*ii/ncoul) for ii in range(ncoul)]
+        
+        # Plot data
+        for ii, SS in enumerate(self.surfaceStress):
+            for st in stress:
+                plt.figure(figname+st)
+                plt.subplot(311)
+                plt.title
+                plt.plot(SS['theta'], SS[st].real, '.-', color=colors[ii], label=SS['ind'])
+                plt.subplot(312)
+                plt.plot(SS['theta'], SS[st].imag, '.--', color=colors[ii], label=SS['ind'])
+                plt.subplot(313)
+                plt.plot(SS['theta'], abs(SS[st].real), '.:', color=colors[ii], label=SS['ind'])
+        
+        # Finalize plots
+        ticks = np.arange(0, 5, 1)*np.pi/8
+        tickslabels = ['0', '$\\pi/8$', '$\\pi/4$', '$3\\pi/8$', '$\\pi/2$']
+        for st, llab in zip(stress, labels):
+            plt.figure(figname+st)
+            for ii, ylab in zip(range(3), ('Re', 'Im', 'abs')):
+                plt.subplot(3,1,ii+1)
                 plt.xticks(ticks, tickslabels)
+                plt.axhline(y=0, zorder=0, color='0.8')
+                plt.ylabel('$%s(%s)$'%(ylab, llab))
+            plt.legend(title='index')
+            plt.xlabel('$\\theta$')
 
         
 if __name__ == "__main__":
@@ -550,6 +622,8 @@ if __name__ == "__main__":
         omega = np.linspace(0, 8e5, 500) 
         Det.followBranch0(omega, itermax=20, jumpC2=0.004, interp='cubic')
         Det.plotFollow()
-        Det.computeABCDEF(10)
-        
+        for ind in range(10, 130, 20):
+            Det.computeSurfaceStress(ind)
+        Det.plotSurfaceStress0()
+        Det.plotSurfaceStress()
         
