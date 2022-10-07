@@ -332,7 +332,6 @@ class DispElliptic(round_bar.DetDispEquation):
         # Normalize each component wrt value at center point
         # => requires equation 2 on Fraser's paper on rectangular bars
         
-        self.surfaceStress0 = {'col':st_cp, 'mid':st_mp}
         surfaceStress = {'sig_n':interleave(st_cp[0], st_mp[0]),
                          'tau_t':interleave(st_cp[1], st_mp[1]),
                          'tau_z':interleave(st_cp[2], st_mp[2]),
@@ -341,37 +340,13 @@ class DispElliptic(round_bar.DetDispEquation):
         self.surfaceStress.append(surfaceStress)
 
 
-    def plotSurfaceStress0(self):
-        """Plot surface stresses at collocation points and midpoints
+    def plotSurfaceStress(self, normalize=True, figname=None, cmap='cool'):
+        """Plot surface stresses at collocation points and midpoints, for various
+        values of the circular frequency w
         
-        """
-        labels = ('$\\sigma_n$', '$\\tau_t$', '$\\tau_z$')
-        colors = ('C0', 'C1', 'C2')
-        ST = (self.surfaceStress0['col'], self.surfaceStress0['mid'])
-        
-        LS = ('+--', '.-')
-        THETA = (self.ellipse['theta'], self.midpoints['theta'])
-        for ls, st, theta in zip(LS, ST, THETA):
-            for ii, sstt in enumerate(st):
-                plt.figure('abs')
-                plt.plot(theta, abs(sstt), ls, color=colors[ii], label=labels[ii])
-                plt.figure('REAL')
-                plt.plot(theta, np.real(sstt), ls, color=colors[ii], label=labels[ii])
-                plt.figure('imag')
-                plt.plot(theta, np.imag(sstt), ls, color=colors[ii], label=labels[ii])
-
-        ticks = np.arange(0, 5, 1)*np.pi/8
-        tickslabels = ['0', '$\\pi/8$', '$\\pi/4$', '$3\\pi/8$', '$\\pi/2$']
-        for fig in ('abs', 'REAL', 'imag'):
-            plt.figure(fig)
-            plt.legend(title=fig)
-            plt.xticks(ticks, tickslabels)
-
-
-    def plotSurfaceStress(self, figname=None, cmap='cool'):
-        """Plot surface stresses at collocation points and midpoints
-        
+        :param bool normalize: normalize stress wrt to abs(max(stress))
         :param str figname: prefix for the name of the figure
+        :param str cmap: colormap in which pick colors
         """
         if figname is None:
             figname = ''
@@ -387,14 +362,20 @@ class DispElliptic(round_bar.DetDispEquation):
         # Plot data
         for ii, SS in enumerate(self.surfaceStress):
             for st in stress:
+                if normalize:
+                    if st in ('sig_n', 'tau_t'):
+                        scale = np.max(abs(SS[st]))*np.sign(np.real(SS[st][-1]))
+                        ls = ['.-', '.:']
+                    elif st in ('tau_z'):
+                        scale = np.max(abs(SS[st]))*np.sign(np.imag(SS[st][-1]))
+                        ls = ['.:', '.-']
                 plt.figure(figname+st)
                 plt.subplot(311)
-                plt.title
-                plt.plot(SS['theta'], SS[st].real, '.-', color=colors[ii], label=SS['ind'])
+                plt.plot(SS['theta'], SS[st].real/scale, ls[0], color=colors[ii], label=SS['ind'])
                 plt.subplot(312)
-                plt.plot(SS['theta'], SS[st].imag, '.--', color=colors[ii], label=SS['ind'])
+                plt.plot(SS['theta'], SS[st].imag/scale, ls[1], color=colors[ii], label=SS['ind'])
                 plt.subplot(313)
-                plt.plot(SS['theta'], abs(SS[st].real), '.:', color=colors[ii], label=SS['ind'])
+                plt.plot(SS['theta'], abs(SS[st]/scale), '.--', color=colors[ii], label=SS['ind'])
         
         # Finalize plots
         ticks = np.arange(0, 5, 1)*np.pi/8
@@ -403,11 +384,13 @@ class DispElliptic(round_bar.DetDispEquation):
             plt.figure(figname+st)
             for ii, ylab in zip(range(3), ('Re', 'Im', 'abs')):
                 plt.subplot(3,1,ii+1)
+                if ii==0:
+                    plt.title('N=%i'%self.geo['N'])
                 plt.xticks(ticks, tickslabels)
                 plt.axhline(y=0, zorder=0, color='0.8')
                 plt.ylabel('$%s(%s)$'%(ylab, llab))
             plt.legend(title='index')
-            plt.xlabel('$\\theta$')
+            plt.xlabel('$\\theta$ [rad]')
 
         
 if __name__ == "__main__":
@@ -622,8 +605,8 @@ if __name__ == "__main__":
         omega = np.linspace(0, 8e5, 500) 
         Det.followBranch0(omega, itermax=20, jumpC2=0.004, interp='cubic')
         Det.plotFollow()
-        for ind in range(10, 130, 20):
+        
+        for ind in range(10, 510, 25):
             Det.computeSurfaceStress(ind)
-        Det.plotSurfaceStress0()
         Det.plotSurfaceStress()
         
