@@ -299,6 +299,7 @@ class DispElliptic(round_bar.DetDispEquation):
         ABC = Z[:,-2]  # vector of coefficients An, Bn, Cn (or Dn, En, Fn)
         
         N = self.geo['N']
+        
         def computeStress(A, ABC):
             """Compute stresses from characteristic matrix and coefficients vector
             
@@ -369,6 +370,9 @@ class DispElliptic(round_bar.DetDispEquation):
                     elif st in ('tau_z'):
                         scale = np.max(abs(SS[st]))*np.sign(np.imag(SS[st][-1]))
                         ls = ['.:', '.-']
+                else:
+                    scale = 1
+                    ls = ['.-', '.-']
                 plt.figure(figname+st)
                 plt.subplot(311)
                 plt.plot(SS['theta'], SS[st].real/scale, ls[0], color=colors[ii], label=SS['ind'])
@@ -600,6 +604,8 @@ if __name__ == "__main__":
         fu.savefigs(path='convergence', overw=False)
     
     #%% Compute residual stress between collocation points
+    # Only works for the first branch of longitudinal mode
+    # (requires followBranch0 method to run successfully)
     if True:
         Det = DispElliptic(e=0.5, N=6, mode='L')
         omega = np.linspace(0, 8e5, 500) 
@@ -608,5 +614,5 @@ if __name__ == "__main__":
         
         for ind in range(10, 510, 25):
             Det.computeSurfaceStress(ind)
-        Det.plotSurfaceStress()
+        Det.plotSurfaceStress(normalize=True)  # normalized=False required for e=0
         
