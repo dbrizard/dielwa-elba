@@ -10,10 +10,13 @@ https://doi.org/10.1016/0022-460X(69)90199-0
 Also contains a module to compute the dispersion of longitudinal elastic waves 
 in round bars (Pochhammer-Chree equation).
 
-![L mode dispersion diagram](example/L.png) ![T mode dispersion diagram](example/T.png)
+![L mode dispersion diagram](example/L.png) 
 
-![Bx mode dispersion diagram](example/Bx.png) ![By mode dispersion diagram](example/By.png)
-
+<!---
+![T mode dispersion diagram](example/T.png)
+![Bx mode dispersion diagram](example/Bx.png) 
+![By mode dispersion diagram](example/By.png)
+--->
 
 
 
