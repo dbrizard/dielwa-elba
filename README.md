@@ -10,7 +10,12 @@ https://doi.org/10.1016/0022-460X(69)90199-0
 Also contains a module to compute the dispersion of longitudinal elastic waves 
 in round bars (Pochhammer-Chree equation).
 
-XX Put example here.
+![L mode dispersion diagram](example/L.png) ![T mode dispersion diagram](example/T.png)
+
+![Bx mode dispersion diagram](example/Bx.png) ![By mode dispersion diagram](example/By.png)
+
+
+
 
 ## Dispersion curves visualization
 
@@ -48,9 +53,15 @@ This repository contains the following Python and Fortran files:
 
 
 ## Documentation and usage
-Sorry, this is a small project, read the docstrings !
+Sorry, this is a small project, read the docstrings for the documentation.
+
+For examples of how to use the modules, see the script part at the end of each module.
+It serves as both examples and tests of the methods.
+
+The names of the methods should be explicit enough to guess what they do. 
+I hope the names of the attributes are not so obscure.
 
 
 ## Testing
 Well, you can use `ellipticReferenceSolutions.py` to plot Fraser's curves and
-compare them with the dispersio curves computed with `elliptical_bar_fraser.py`.
+compare them with the dispersion curves computed with `elliptical_bar_fraser.py`.

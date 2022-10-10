@@ -401,7 +401,7 @@ if __name__ == "__main__":
     plt.close("all")
     
     # %% Numerical solving: FOLLOW FIRST BRANCH
-    if False:
+    if True:
         e = 0.8
         N = 4
         modes = ('L', 'T', 'Bx', 'By')
@@ -422,13 +422,13 @@ if __name__ == "__main__":
                 # plt.ylim(ymax=1.7, ymin=0.7)
                 # plt.xlim(xmin=0., xmax=5)
         
-                FR.plot(e=[e], figname='sign_imag')
+                FR.plot(e=[e], ls='+-', figname='sign_imag')
             
             Det.computeKCmap(k=np.linspace(0, 5, 100), c=np.linspace(0.6, 2.2, 100), adim=True)
 
-            Det.plotDet('KC', typep='sign', nature='auto', figname=mode)
-            FR.plot(e=[e], figname=mode, branch=mode+'1', x='K', y='C')
-            FR.plot(e=[e], figname=mode, branch=mode+'2', x='K', y='C')
+            Det.plotDet('KC', typep='sign', nature='auto', figname=mode, title='%s mode, N=%i'%(mode, N))
+            FR.plot(e=[e], ls='k.-', figname=mode, branch=mode+'1', x='K', y='C')
+            FR.plot(e=[e], ls='k.-', figname=mode, branch=mode+'2', x='K', y='C')
         
     
     #%% Comparaison Fortran/Python + validation Fraser
@@ -606,7 +606,7 @@ if __name__ == "__main__":
     #%% Compute residual stress between collocation points
     # Only works for the first branch of longitudinal mode
     # (requires followBranch0 method to run successfully)
-    if True:
+    if False:
         Det = DispElliptic(e=0.5, N=6, mode='L')
         omega = np.linspace(0, 8e5, 500) 
         Det.followBranch0(omega, itermax=20, jumpC2=0.004, interp='cubic')

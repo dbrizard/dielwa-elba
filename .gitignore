@@ -2,6 +2,8 @@ dbin/
 convergence/
 maps/
 *.o
+*.pdf
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

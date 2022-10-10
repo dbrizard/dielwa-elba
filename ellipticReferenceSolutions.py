@@ -34,6 +34,7 @@ Created on Thu Jul  7 08:19:50 2022
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.optimize as opt
+import os
 
 
 class Fraser:
@@ -68,18 +69,19 @@ class Fraser:
         e_B = [0.4, 0.6, 0.8]
         self.e = {'L':e_LT, 'T':e_LT, 'B':e_B}
 
+        tables = '/home/dbrizard/Calcul/22_ellipt/FraserTables'  # location of the tables
         # c/c2, longitudinal mode, 1st and 2nd branch
-        L1 = np.genfromtxt('FraserTables/fraserTable2.txt', delimiter=',')  
-        L2 = np.genfromtxt('FraserTables/fraserTable3.txt', delimiter=',')
+        L1 = np.genfromtxt(os.path.join(tables,'fraserTable2.txt'), delimiter=',')  
+        L2 = np.genfromtxt(os.path.join(tables,'fraserTable3.txt'), delimiter=',')
         # c/c2, torsional mode, 1st and 2nd branch
-        T1 = np.genfromtxt('FraserTables/fraserTable4.txt', delimiter=',')
-        T2 = np.genfromtxt('FraserTables/fraserTable5.txt', delimiter=',')
+        T1 = np.genfromtxt(os.path.join(tables,'fraserTable4.txt'), delimiter=',')
+        T2 = np.genfromtxt(os.path.join(tables,'fraserTable5.txt'), delimiter=',')
         # c/c2, x Bending mode, 1st and 2nd branch
-        Bx1 = np.genfromtxt('FraserTables/fraserTableBx1.txt', delimiter=',')
-        Bx2 = np.genfromtxt('FraserTables/fraserTableBx2.txt', delimiter=',')
+        Bx1 = np.genfromtxt(os.path.join(tables,'fraserTableBx1.txt'), delimiter=',')
+        Bx2 = np.genfromtxt(os.path.join(tables,'fraserTableBx2.txt'), delimiter=',')
         # c/c2, y Bending mode, 1st and 2nd branch
-        By1 = np.genfromtxt('FraserTables/fraserTableBy1.txt', delimiter=',')
-        By2 = np.genfromtxt('FraserTables/fraserTableBy2.txt', delimiter=',')
+        By1 = np.genfromtxt(os.path.join(tables,'fraserTableBy1.txt'), delimiter=',')
+        By2 = np.genfromtxt(os.path.join(tables,'fraserTableBy2.txt'), delimiter=',')
  
         self.branches = {'L1':L1, 'L2':L2, 'T1':T1, 'T2':T2,
                          'Bx1':Bx1, 'Bx2':Bx2, 'By1':By1, 'By2':By2}
@@ -108,7 +110,7 @@ class Fraser:
             xdata, ydata, xlabel, ylabel = self.getBranch(ee, branch=branch, x=x, y=y, labels=True)
             plt.plot(xdata, ydata, ls, label="%g (%s)"%(ee,branch))
         
-        plt.legend(title='e (b):')
+        plt.legend(title='e (br.):')
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
 
