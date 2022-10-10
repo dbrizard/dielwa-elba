@@ -29,7 +29,8 @@ Two methods are available to visualize the dispersion curves:
 
 ### Warnings
 
-The second option is only possible if the starting of the curve is known, ie. only for the first branch of the longitudinal mode. Higher branches are harder to catch and follow automatically.
+The second option is only possible if the starting of the curve is known, ie. only for the first branch of the longitudinal mode. Higher branches are harder to catch and follow automatically. 
+It is not possible, for now, to follow the first branch of the other modes (torsion and flexion).
 
 The first method requires some car in the interpretation of the diagrams. 
 Depending on the order of approximation (ie number of collocation points), 
