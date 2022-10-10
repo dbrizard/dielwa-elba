@@ -368,7 +368,7 @@ class DetDispEquation:
         :param int itermax: maximum number of iterations
         :param str extrap: kind of extrapolation (see :func:`prediction`)
         :param float jumpC2: dead zone where no points are computed (suggested value is 0.004)
-        :param str interp: interpolate on ignored dead zone points 
+        :param str interp: interpolate on ignored dead zone points  (see interp1d kind argument)
         """
         if not w[0]==0.0:
             print('w[0] should be equal to 0')
@@ -415,8 +415,8 @@ class DetDispEquation:
                 #k_pred = ksol.real + 0j
         
         
-        # Interpolate on dangerous zone points
         if jumpC2 is not None and interp is not None:
+            # Interpolate on dangerous zone points
             print('Interpolation on %i skipped points'%len(ind_skp))
             interp_fun = interp1d(W, K, kind=interp, assume_sorted=True,
                                   fill_value='extrapolate')
@@ -426,12 +426,14 @@ class DetDispEquation:
             # k = interp_fun(w)
             w_ = w
         else:
+            # No interpolation
             k = np.array(K)
             w_ = np.array(W)  # may be less points than initially asked   
 
         c = w_/k
         c[0] = self.c['co']
-        self.b0 = {'w':w_, 'k':np.array(K), 'c':c, 'k':k,
+        self.b0 = {'w':w_, 'c':c, 'k':k,
+                   '_k':np.array(K), '_w':np.array(W),
                    'res':np.array(RES), 'nit':NIT, 'k_pred':np.array(KPRED),
                    'ind_skipped':ind_skp, 'ignoredW':len(ind_skp)}
     
@@ -445,7 +447,7 @@ class DetDispEquation:
         Returns either "x, y" or "x, xlab, y, ylab"
        
         :param str x: x variable ('w', 'W', 'k', '-')
-        :param str y: y variable ('c', 'C')
+        :param str y: y variable ('c', 'C', 'w', 'W')
         :param bool label: also return the corresponding labels
         """
         if x=='w':
@@ -468,7 +470,12 @@ class DetDispEquation:
         elif y=='C':
             ylab = '$c/%s$ [-]'%self.dimlab['c']
             y = self.b0['c']/self.dim['c']
-            
+        elif y=='w':
+            ylab = '$\\omega$ [rad/s]'
+            y = self.b0['w']
+        elif y=='W':
+            ylab= '$\\Omega=\\omega %s/%s$ [-]'%(self.dimlab["l"], self.dimlab["c"])
+            y = self.b0['w']*self.dim['l']/self.dim["c"]            
         
         if label:
             return x, xlab, y, ylab
@@ -501,24 +508,26 @@ class DetDispEquation:
         plt.figure()
         ax = plt.subplot(311)
         plt.ylabel('c [m/s]')
-        plt.plot(self.b0['w'], self.b0['c'], '.-')
+        plt.plot(self.b0['_w'], self.b0['_w']/self.b0['_k'], '.', label='solved')
+        plt.plot(self.b0['w'], self.b0['c'], '-', label='interp')
+        plt.legend()
         
         plt.subplot(312, sharex=ax)
         plt.ylabel('Residue')
-        plt.semilogy(self.b0['w'], abs(self.b0['res'].real), 'b.-', label='real')
-        plt.semilogy(self.b0['w'], abs(self.b0['res'].imag), 'g.-', label='imag')
-        plt.semilogy(self.b0['w'], abs(self.b0['res']), 'r.-', label='abs')
+        plt.semilogy(self.b0['_w'], abs(self.b0['res'].real), 'b.-', label='real')
+        plt.semilogy(self.b0['_w'], abs(self.b0['res'].imag), 'g.-', label='imag')
+        plt.semilogy(self.b0['_w'], abs(self.b0['res']), 'r.-', label='abs')
         plt.legend()
         
         plt.subplot(313, sharex=ax)
         plt.ylabel('$N_{iter}$')
-        plt.plot(self.b0['w'], self.b0['nit'], '.-')
+        plt.plot(self.b0['_w'], self.b0['nit'], '.-')
         plt.xlabel('$\omega$ [rad/s]')
         
         if pred:
             plt.figure()
-            plt.plot(self.b0['k'], self.b0['w'], '.-', label='sol')
-            plt.plot(self.b0['k_pred'], self.b0['w'], '.-', label='pred')
+            plt.plot(self.b0['_k'], self.b0['_w'], '.-', label='sol')
+            plt.plot(self.b0['k_pred'], self.b0['_w'], '.-', label='pred')
             plt.legend()
             plt.xlabel('k')
             plt.ylabel('w')

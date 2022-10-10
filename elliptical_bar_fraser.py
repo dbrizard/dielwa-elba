@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
+"""Compute the dispersion curves of elliptical bars using the collocation method
+presented by Fraser in:
+
 Fraser, W. B. (1969). Dispersion of elastic waves in elliptical bars. 
 *Journal of Sound and Vibration*, 10(2), 247‑260. 
 https://doi.org/10.1016/0022-460X(69)90199-0
+
+Some details can also be found in:
+
+Fraser, W. B. (1969). Stress wave propagation in rectangular bars. 
+*International Journal of Solids and Structures*, 5(4), 379‑397. 
+https://doi.org/10.1016/0020-7683(69)90020-1
 
 
 
@@ -16,6 +24,7 @@ Created on Fri Sep  2 13:03:37 2022
 import numpy as np
 from scipy.special import jv   #Bessel function (v,z) = (order,arg)
 from scipy.optimize import root_scalar
+from scipy.linalg import null_space
 import matplotlib.pyplot as plt
 
 import warnings
@@ -24,49 +33,58 @@ import pickle
 
 import round_bar_pochhammer_chree as round_bar
 import ellipticReferenceSolutions as el
-import fraser_matrix
+from fraser_elliptical import characteristic_matrix
 
 import figutils as fu
 
-def char_func_elliptic_fortran(k, w, R, N, theta, gamma, c_1, c_2, mode='L'):
+def char_func_elliptic_fortran(k, w, R, theta, gamma, c_1, c_2, mode='L',
+                               rEturn='det'):
     """Characteristic function for elliptical bar, with underlying Fortran code
     
     :param float k: wavenumber
     :param float w: circular frequency
     :param array R: radius of collocation points
-    :param int N: number of collocation points
     :param array theta: angle of collocation points
     :param array gamma: angle of normal at collocation points
     :param float c_1: velocity
     :param float c_2: velocity
-    :param str mode: wave propagation mode ('L' or 'T')
+    :param str mode: wave propagation mode ('L', 'T', 'Bx', 'By')
+    :param str rEturn: 'det' or 'matrix'
     """
-    A = fraser_matrix.mat(k, w, R, N, gamma, theta, c_1, c_2, mode)
+    N = len(theta)
+    A = characteristic_matrix(k, w, N, R, theta, gamma, c_1, c_2, mode)
     if mode=='L':
-        detA = np.linalg.det(A[1:, 1:])
+        B = A[1:, 1:]
+        detA = np.linalg.det(B)
     elif mode=='T':
         ind = list(range(3*N))
         ind.remove(N)   # XXX reason why indices N and 2*N ?
         ind.remove(2*N) # ditto
-        detA = np.linalg.det(A[np.ix_(ind,ind)])
+        B = A[np.ix_(ind,ind)]
+        detA = np.linalg.det(B)
     elif mode in ('Bx', 'By'):
+        B = A
         detA = np.linalg.det(A)
-    return detA
+    
+    if rEturn=='det':
+        return detA
+    elif rEturn=='matrix':
+        return A, B
 
 
 
-def char_func_elliptic(k, w, R, N, theta, gamma, c_1, c_2):
+def char_func_elliptic(k, w, R, theta, gamma, c_1, c_2):
     """Characteristic function for elliptical bar
     
     :param float k: wavenumber
     :param float w: circular frequency
     :param array R: radius of collocation points
-    :param int N: number of collocation points
     :param array theta: angle of collocation points
     :param array gamma: angle of normal at collocation points
     :param float c_1: velocity
     :param float c_2: velocity
     """
+    N = len(theta)
     c = w/k
     cc2 = (c/c_2)**2
     cc1 = (c/c_1)**2 # XXX tester si plus rapide ou pas
@@ -155,25 +173,35 @@ class DispElliptic(round_bar.DetDispEquation):
         la = E * nu / ((1 + nu) * (1 - 2 * nu))  # coef de Lamé
         c_2 = np.sqrt(mu/rho) 
         # c_1 = np.sqrt((la+2*mu)/rho)
-        c_1 = c_2*np.sqrt(2*(1-nu)/(1-2*nu)) #Fraser eq(7)
+        c_1 = c_2*np.sqrt(2*(1-nu)/(1-2*nu))  # Fraser eq(7)
         self.mat = {'E':E, 'rho':rho, 'nu':nu, 'mu':mu, 'la':la}
 
         self.c = {'c_2':c_2, 'c_1':c_1, 'co': np.sqrt(E/rho)}
-        b = a*np.sqrt(1-e**2) #Fraser eq(4) 
+        b = a*np.sqrt(1-e**2)  # Fraser eq(4) 
         self.a = a #b
         self.geo = {'e': e, 'b': b, 'N': N,'a':a}
         
-        # Collocation points coordinates
+        # Collocation points coordinates and midway angles
         m = np.arange(1, N+1)
         if mode in ('L', 'T'):
             theta = (m-1)*np.pi/2/N
+            theta_mid = (m-0.5)*np.pi/2/N
         elif mode in ('Bx', 'By'):
             theta = (m-0.5)*np.pi/2/N
+            theta_mid = m*np.pi/2/N
+            
         e2 = e**2
-        cos__2 = np.cos(theta)**2
-        gamma = -np.arctan((e2*np.sin(2*theta))/(2*(1-e2*cos__2))) #Frser eq(6)
-        R = b*np.sqrt(1/(1 - e2*cos__2)) #Frser eq(5)
-        self.ellipse = {'R':R, 'gamma':gamma, 'theta':theta}
+        
+        def compute_gamma_R(theta, b=b):
+            cos2 = np.cos(theta)**2
+            gamma = -np.arctan((e2*np.sin(2*theta))/(2*(1-e2*cos2)))  # Fraser eq(6)
+            R = b*np.sqrt(1/(1 - e2*cos2))  # Frser eq(5)
+            return gamma, R
+        
+        gamma, R = compute_gamma_R(theta)
+        self.ellipse = {'theta':theta, 'gamma':gamma, 'R':R}
+        gamid, Rmid = compute_gamma_R(theta_mid)
+        self.midpoints = {'theta':theta_mid, 'gamma':gamid, 'R':Rmid}
         
         # Characteristic function
         if mode in ('T', 'Bx', 'By') and fortran is False:
@@ -182,12 +210,12 @@ class DispElliptic(round_bar.DetDispEquation):
         if fortran:
             def detfun(k, w):
                 """Characteristic determinant function."""
-                return char_func_elliptic_fortran(k, w, R, N, theta, gamma, 
-                                                  c_1, c_2, mode=mode)
+                return char_func_elliptic_fortran(k, w, R, theta, gamma, 
+                                                  c_1, c_2, mode=mode, rEturn='det')
         else:
             def detfun(k, w):
                 """Characteristic determinant function."""
-                return char_func_elliptic(k, w, R, N, theta, gamma, c_1, c_2)
+                return char_func_elliptic(k, w, R, theta, gamma, c_1, c_2)
         self.detfun = detfun
         self.vectorized = False  # detfun is not vectorized
         self.dim = {'c':c_2, 'l':b}  # for dimensionless variables
@@ -195,7 +223,22 @@ class DispElliptic(round_bar.DetDispEquation):
         self.mode = mode
         
         self._nature = self._defineAutoReIm4map()
+        self.surfaceStress = []
         
+        # Also define some other useful functions
+        if fortran:
+            def matrix(k, w):
+                """Characteristic matrix, on collocation points"""
+                return char_func_elliptic_fortran(k, w, R, theta, gamma, 
+                                                  c_1, c_2, mode=mode, rEturn='matrix')
+            def matrix2(k, w, theta, b):
+                """Characteristic matrix, for other points"""
+                gamma, R = compute_gamma_R(theta, b)
+                return char_func_elliptic_fortran(k, w, R, theta, gamma, 
+                                                  c_1, c_2, mode=mode, rEturn='matrix')
+            self._matrix = matrix
+            self._matrix2 = matrix2
+            
         
     def _defineAutoReIm4map(self):
         """Define if Re or Im part of characteristic equation should used for
@@ -203,12 +246,12 @@ class DispElliptic(round_bar.DetDispEquation):
         
         """
         if self.mode in ('L', 'T'):
-            if N%2==1:
+            if self.geo['N']%2==1:
                 if self.mode in ('L'):
                     nat = 'imag'
                 elif self.mode in ('T'):
                     nat = 'real'
-            elif N%2==0:
+            elif self.geo['N']%2==0:
                 if self.mode in ('L'):
                     nat = 'real'
                 elif self.mode in ('T'):
@@ -235,18 +278,135 @@ class DispElliptic(round_bar.DetDispEquation):
         y_g = self.ellipse['R']*np.sin(self.ellipse['theta']+self.ellipse['gamma'])
         for ii in range(self.geo['N']):
             plt.quiver(0, 0, x_g[ii], y_g[ii], scale=0.09, color='r')
-     
+        
+
+    def computeSurfaceStress(self, ind, rcond=1e-9, plot=True):
+        """Compute surface stresses at collocation points and midpoints
+        
+        :param int ind: index of (k, w) point on first branch to consider
+        :param float rcond: relative condition umber (see :func:`scipy.linalg.null_space`)
+        :param bool plot: 
+        
+        """
+        k, w = self.getBranch0(x='k', y='w')
+        
+        Acp, Bcp = self._matrix(k[ind], w[ind])  # collocation points
+        Amp, Bmp = self._matrix2(k[ind], w[ind], self.midpoints['theta'], self.geo['b'])
+        Aro, Bro = self._matrix2(k[ind], w[ind], self.midpoints['theta'], 0)  # center point
+        
+        # Determine solution vector for coefficients An, Bn, Cn for given (k, w)
+        Z = null_space(Acp, rcond=rcond)
+        ABC = Z[:,-2]  # vector of coefficients An, Bn, Cn (or Dn, En, Fn)
+        
+        N = self.geo['N']
+        
+        def computeStress(A, ABC):
+            """Compute stresses from characteristic matrix and coefficients vector
+            
+            :param array A: characteristic matrix, for N given values of (R, theta) and given (k, w)
+            :param array ABC: solution vector of coefficients An, Bn, Cn for given (k, w)
+            """
+            temp = A*ABC  # before last vector should be the right one
+            tau_t = temp[:N, :]
+            sig_n = temp[N:2*N, :]
+            tau_z = temp[2*N:, :]
+            
+            return sig_n.sum(axis=1), tau_t.sum(axis=1), tau_z.sum(axis=1)
+
+
+        def interleave(aa, bb):
+            """Interleave midpoints and collocation points to get a single vector
+            
+            :param array aa: vector related to collocation points
+            :param array bb: vector related to midpoints
+            """
+            cc = np.empty((len(aa)+len(bb),), dtype=aa.dtype)
+            cc[::2] = aa
+            cc[1::2] = bb
+            return cc
+            
+        # Now compute stresses 
+        st_cp = computeStress(Acp, ABC)  # at collocation points
+        st_mp = computeStress(Amp, ABC)  # at midpoints
+        # st_ro = computeStress(Aro, ABC)  # at center point WRONG like this!
+        
+        # Normalize each component wrt value at center point
+        # => requires equation 2 on Fraser's paper on rectangular bars
+        
+        surfaceStress = {'sig_n':interleave(st_cp[0], st_mp[0]),
+                         'tau_t':interleave(st_cp[1], st_mp[1]),
+                         'tau_z':interleave(st_cp[2], st_mp[2]),
+                         'theta':interleave(self.ellipse['theta'], self.midpoints['theta']),
+                         'ind':ind}
+        self.surfaceStress.append(surfaceStress)
+
+
+    def plotSurfaceStress(self, normalize=True, figname=None, cmap='cool'):
+        """Plot surface stresses at collocation points and midpoints, for various
+        values of the circular frequency w
+        
+        :param bool normalize: normalize stress wrt to abs(max(stress))
+        :param str figname: prefix for the name of the figure
+        :param str cmap: colormap in which pick colors
+        """
+        if figname is None:
+            figname = ''
+        stress = ('sig_n', 'tau_t', 'tau_z')
+        labels = ('\\sigma_n', '\\tau_t', '\\tau_z')
+        colors = {'sig_n':'C0', 'tau_t':'C1', 'tau_z':'C2'}
+        
+        # Define colors
+        ncoul = len(self.surfaceStress)
+        cm = plt.get_cmap(cmap)
+        colors = [cm(1.*ii/ncoul) for ii in range(ncoul)]
+        
+        # Plot data
+        for ii, SS in enumerate(self.surfaceStress):
+            for st in stress:
+                if normalize:
+                    if st in ('sig_n', 'tau_t'):
+                        scale = np.max(abs(SS[st]))*np.sign(np.real(SS[st][-1]))
+                        ls = ['.-', '.:']
+                    elif st in ('tau_z'):
+                        scale = np.max(abs(SS[st]))*np.sign(np.imag(SS[st][-1]))
+                        ls = ['.:', '.-']
+                else:
+                    scale = 1
+                    ls = ['.-', '.-']
+                plt.figure(figname+st)
+                plt.subplot(311)
+                plt.plot(SS['theta'], SS[st].real/scale, ls[0], color=colors[ii], label=SS['ind'])
+                plt.subplot(312)
+                plt.plot(SS['theta'], SS[st].imag/scale, ls[1], color=colors[ii], label=SS['ind'])
+                plt.subplot(313)
+                plt.plot(SS['theta'], abs(SS[st]/scale), '.--', color=colors[ii], label=SS['ind'])
+        
+        # Finalize plots
+        ticks = np.arange(0, 5, 1)*np.pi/8
+        tickslabels = ['0', '$\\pi/8$', '$\\pi/4$', '$3\\pi/8$', '$\\pi/2$']
+        for st, llab in zip(stress, labels):
+            plt.figure(figname+st)
+            for ii, ylab in zip(range(3), ('Re', 'Im', 'abs')):
+                plt.subplot(3,1,ii+1)
+                if ii==0:
+                    plt.title('N=%i'%self.geo['N'])
+                plt.xticks(ticks, tickslabels)
+                plt.axhline(y=0, zorder=0, color='0.8')
+                plt.ylabel('$%s(%s)$'%(ylab, llab))
+            plt.legend(title='index')
+            plt.xlabel('$\\theta$ [rad]')
 
         
 if __name__ == "__main__":
     plt.close("all")
     
     # %% Numerical solving: FOLLOW FIRST BRANCH
-    if True:
+    if False:
         e = 0.8
         N = 4
+        modes = ('L', 'T', 'Bx', 'By')
         # mode = 'By'
-        for mode in ('L', 'T', 'Bx', 'By'):
+        for mode in modes:
             Det = DispElliptic(e=e, N=N, mode=mode)
             omega = np.linspace(0, 8e5, 500)  # Ok pour k<1.208
             # omega = np.linspace(0, 1e6, 4000)  # trying very small step. Ok pour k<1.2182
@@ -310,28 +470,6 @@ if __name__ == "__main__":
     if False:
         e=0
         
-    #%% Etude parité N
-    if False:
-        e = 0.7
-        N = [4, 6, 8, 10, 12]
-        # N = [3, 5, 7, 9, 13]
-        coul = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple']
-        DET = []
-        # Calcul
-        for nn in N:
-            Det = DispElliptic(e=e, N=nn)
-            k =  np.linspace(0.0001, 5/Det.geo["b"], 150)
-            c = np.linspace(0.7*Det.c["c_2"], 1.7*Det.c["c_2"], 100)
-            Det.computeKCmap(k, c, adim = False)
-            DET.append(Det)
-            
-        # Affichage
-        for nn, cc, Det in zip(N, coul, DET):
-            Det.plotDet_KC(figname='cont_imag', colors=cc)
-            Det.plotDet_KC(typep="contour", nature='real', figname="cont_real", colors=cc)
-            Det.plotDet_KC(typep="sign", nature='real', figname="sign_real")
-            Det.plotDet_KC(typep="sign", figname="sign_imag")
-            
 
     #%% Compute maps for all 4 modes
     if False:
@@ -364,31 +502,7 @@ if __name__ == "__main__":
             # gather pdf figures with pdfjam: 
             # pdfjam modeT/*.pdf --nup 2x5 --outfile mapsT.pdf
         
-    #%% KC
 
-    if False:
-        e = 0.4
-        N = 7
-        Det = DispElliptic(e=e, N=N, fortran=True)
-        Det.plot_ellipse()
-        FR = el.Fraser()
-        FR.plot(e=[e], figname='cont_imag')
-        FR.plot(e=[e], figname='cont_imag', branch=1)
-        FR.plot(e=[e], figname='cont_real')
-        FR.plot(e=[e], figname='cont_real', branch=1)
-         
-        FR.plot(e=[e], figname='sign_imag')
-        FR.plot(e=[e], figname='sign_imag', branch=1)
-        FR.plot(e=[e], figname='sign_real')
-        FR.plot(e=[e], figname='sign_real', branch=1)
-        
-        k =  np.linspace(0.0001, 5/Det.geo["b"], 150)
-        c = np.linspace(0.7*Det.c["c_2"], 2.*Det.c["c_2"], 100)
-        Det.computeKCmap(k, c, adim = False)
-        Det.plotDet_KC(figname='cont_imag')
-        Det.plotDet_KC(typep="contour", nature='real', figname="cont_real")
-        Det.plotDet_KC(typep="sign", nature='real', figname="sign_real")
-        Det.plotDet_KC(typep="sign", figname="sign_imag")
 
     #%% Domaine KW
     if False:
@@ -397,25 +511,15 @@ if __name__ == "__main__":
         Det = DispElliptic(e=0.7, N=7)
         Det.plot_ellipse()
         FR = el.Fraser()
-        k =  np.linspace(0.0001, 5/Det.geo["b"], 150)   
+        k = np.linspace(0.0001, 5/Det.geo["b"], 150)   
         w = np.linspace(0.1, 5e5, 100)
         Det.computeKWmap(k, w, adim=False)
-        Det.plotDet( xy="KW", typep="contour", nature="imag", figname='cont_imag')
-        Det.plotDet( xy="KW", typep="contour", nature="real", figname='cont_real')
-        Det.plotDet( xy="KW", typep="sign", nature="imag", figname="sign_imag")
-        Det.plotDet( xy="KW", typep="sign", nature="real", figname="sign_real")
-        
-        FR.plot(y='W', figname='cont_imag', e=[e])
-        FR.plot(y='W', figname='cont_imag', branch=1, e=[e])
-        
-        FR.plot(y='W', figname='cont_real', e=[e])
-        FR.plot(y='W', figname='cont_real', branch=1, e=[e])
-        
-        FR.plot(y='W', figname='sign_imag', e=[e])
-        FR.plot(y='W', figname='sign_imag', branch=1, e=[e])
-        
-        FR.plot(y='W', figname='sign_real', e=[e])
-        FR.plot(y='W', figname='sign_real', branch=1, e=[e])
+
+        Det.plotDet(xy="KW", typep="sign", nature="imag", figname="sign_imag")
+        FR.plot(x='K', y='W', figname='sign_imag', e=[e])
+        FR.plot(x='K', y='W', figname='sign_imag', branch='L2', e=[e])
+        # XXX curves do not overlay... !
+
         
     # %% Convergence --Résolution numérique
     if False:
@@ -498,3 +602,17 @@ if __name__ == "__main__":
                 
         
         fu.savefigs(path='convergence', overw=False)
+    
+    #%% Compute residual stress between collocation points
+    # Only works for the first branch of longitudinal mode
+    # (requires followBranch0 method to run successfully)
+    if True:
+        Det = DispElliptic(e=0.5, N=6, mode='L')
+        omega = np.linspace(0, 8e5, 500) 
+        Det.followBranch0(omega, itermax=20, jumpC2=0.004, interp='cubic')
+        Det.plotFollow()
+        
+        for ind in range(10, 510, 25):
+            Det.computeSurfaceStress(ind)
+        Det.plotSurfaceStress(normalize=True)  # normalized=False required for e=0
+        
